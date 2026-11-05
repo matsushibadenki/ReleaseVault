@@ -1,0 +1,484 @@
+[
+  {
+    "key": "APPLE_TEAM_ID",
+    "name": "Team ID",
+    "kind": "id",
+    "group": "Apple",
+    "guide": "apple-id",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_BUNDLE_ID",
+    "name": "Bundle ID",
+    "kind": "id",
+    "group": "Apple",
+    "guide": "apple-id",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_API_ISSUER",
+    "name": "App Store Connect Issuer ID",
+    "kind": "id",
+    "group": "Apple",
+    "guide": "asc",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_API_KEY",
+    "name": "App Store Connect Key ID",
+    "kind": "id",
+    "group": "Apple",
+    "guide": "asc",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_API_KEY_P8",
+    "name": "App Store Connect API Key (.p8)",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "asc",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_CERTIFICATE",
+    "name": "Developer ID Application (.p12)",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "developer-id",
+    "targets": [
+      "mac-direct"
+    ]
+  },
+  {
+    "key": "APPLE_CERTIFICATE_PASSWORD",
+    "name": "Developer ID PKCS#12 Password",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "developer-id",
+    "targets": [
+      "mac-direct"
+    ]
+  },
+  {
+    "key": "APPLE_SIGNING_IDENTITY",
+    "name": "Developer ID Signing Identity",
+    "kind": "id",
+    "group": "Apple",
+    "guide": "developer-id",
+    "targets": [
+      "mac-direct"
+    ]
+  },
+  {
+    "key": "HARDENED_RUNTIME",
+    "name": "Hardened Runtime",
+    "kind": "config",
+    "group": "Apple",
+    "guide": "developer-id",
+    "targets": [
+      "mac-direct"
+    ]
+  },
+  {
+    "key": "APPLE_STORE_CERTIFICATE",
+    "name": "Apple Distribution (.p12)",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "apple-store",
+    "targets": [
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_STORE_CERTIFICATE_PASSWORD",
+    "name": "Distribution PKCS#12 Password",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "apple-store",
+    "targets": [
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_PROVISIONING_PROFILE",
+    "name": "Provisioning Profile",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "apple-store",
+    "targets": [
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_ENTITLEMENTS",
+    "name": "Entitlements",
+    "kind": "config",
+    "group": "Apple",
+    "guide": "apple-store",
+    "targets": [
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_INSTALLER_CERTIFICATE",
+    "name": "Mac Installer Distribution (.p12)",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "apple-store",
+    "targets": [
+      "mac-store"
+    ]
+  },
+  {
+    "key": "APPLE_APP_SANDBOX",
+    "name": "App Sandbox",
+    "kind": "config",
+    "group": "Apple",
+    "guide": "apple-store",
+    "targets": [
+      "mac-store"
+    ]
+  },
+  {
+    "key": "ANDROID_PACKAGE_NAME",
+    "name": "Application ID",
+    "kind": "id",
+    "group": "Android",
+    "guide": "android",
+    "targets": [
+      "android-play",
+      "android-apk"
+    ]
+  },
+  {
+    "key": "ANDROID_KEYSTORE",
+    "name": "Release Keystore",
+    "kind": "secret",
+    "group": "Android",
+    "guide": "android",
+    "targets": [
+      "android-apk"
+    ]
+  },
+  {
+    "key": "ANDROID_KEY_ALIAS",
+    "name": "Key Alias",
+    "kind": "id",
+    "group": "Android",
+    "guide": "android",
+    "targets": [
+      "android-apk"
+    ]
+  },
+  {
+    "key": "ANDROID_KEYSTORE_PASSWORD",
+    "name": "Keystore Password",
+    "kind": "secret",
+    "group": "Android",
+    "guide": "android",
+    "targets": [
+      "android-apk"
+    ]
+  },
+  {
+    "key": "ANDROID_KEY_PASSWORD",
+    "name": "Key Password",
+    "kind": "secret",
+    "group": "Android",
+    "guide": "android",
+    "targets": [
+      "android-apk"
+    ]
+  },
+  {
+    "key": "PLAY_APP_SIGNING_SHA256",
+    "name": "Play App Signing SHA-256",
+    "kind": "id",
+    "group": "Google Play",
+    "guide": "play",
+    "targets": [
+      "android-play"
+    ]
+  },
+  {
+    "key": "PLAY_SERVICE_ACCOUNT",
+    "name": "Play API Service Account",
+    "kind": "secret",
+    "group": "Google Play",
+    "guide": "play",
+    "targets": [
+      "android-play"
+    ]
+  },
+  {
+    "key": "PLAY_TRACK",
+    "name": "Release Track",
+    "kind": "config",
+    "group": "Google Play",
+    "guide": "play",
+    "targets": [
+      "android-play"
+    ]
+  },
+  {
+    "key": "WINDOWS_PUBLISHER",
+    "name": "Publisher",
+    "kind": "id",
+    "group": "Windows",
+    "guide": "windows",
+    "targets": [
+      "windows-direct",
+      "windows-msix",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "WINDOWS_SIGNING_IDENTITY",
+    "name": "Signing Profile / Thumbprint",
+    "kind": "id",
+    "group": "Windows",
+    "guide": "windows",
+    "targets": [
+      "windows-direct",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "WINDOWS_SIGNING_PROVIDER",
+    "name": "PFX / HSM / Artifact Signing",
+    "kind": "config",
+    "group": "Windows",
+    "guide": "windows",
+    "targets": [
+      "windows-direct",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "MS_STORE_PRODUCT_ID",
+    "name": "Partner Center Product ID",
+    "kind": "id",
+    "group": "Microsoft Store",
+    "guide": "microsoft",
+    "targets": [
+      "windows-msix",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "MS_PACKAGE_IDENTITY",
+    "name": "Package Identity",
+    "kind": "id",
+    "group": "Microsoft Store",
+    "guide": "microsoft",
+    "targets": [
+      "windows-msix",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "GPG_KEY_ID",
+    "name": "Signing Key Fingerprint",
+    "kind": "id",
+    "group": "Linux",
+    "guide": "gpg",
+    "targets": [
+      "linux-appimage",
+      "linux-deb",
+      "linux-rpm"
+    ]
+  },
+  {
+    "key": "GPG_PRIVATE_KEY",
+    "name": "GPG Signing Key",
+    "kind": "secret",
+    "group": "Linux",
+    "guide": "gpg",
+    "targets": [
+      "linux-appimage",
+      "linux-deb",
+      "linux-rpm"
+    ]
+  },
+  {
+    "key": "FLATPAK_ID",
+    "name": "Flathub Application ID",
+    "kind": "id",
+    "group": "Linux",
+    "guide": "flatpak",
+    "targets": [
+      "linux-flatpak"
+    ]
+  },
+  {
+    "key": "SNAPCRAFT_STORE_CREDENTIALS",
+    "name": "Snap Store Credentials",
+    "kind": "secret",
+    "group": "Linux",
+    "guide": "snap",
+    "targets": [
+      "linux-snap"
+    ]
+  },
+  {
+    "key": "TAURI_SIGNING_PRIVATE_KEY",
+    "name": "Updater Private Key",
+    "kind": "secret",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
+    ]
+  },
+  {
+    "key": "TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
+    "name": "Updater Key Password",
+    "kind": "secret",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
+    ]
+  },
+  {
+    "key": "TAURI_UPDATER_PUBLIC_KEY",
+    "name": "Updater Public Key",
+    "kind": "config",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
+    ]
+  },
+  {
+    "key": "TAURI_UPDATER_ENDPOINT",
+    "name": "Update Endpoint",
+    "kind": "config",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
+    ]
+  },
+  {
+    "key": "TAURI_UPDATER_CHANNEL",
+    "name": "Update Channel",
+    "kind": "config",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
+    ]
+  },
+  {
+    "key": "RELEASE_REPOSITORY",
+    "name": "GitHub Repository",
+    "kind": "id",
+    "group": "GitHub",
+    "guide": "github",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados",
+      "android-play",
+      "android-apk",
+      "windows-direct",
+      "windows-msix",
+      "windows-exe",
+      "linux-appimage",
+      "linux-deb",
+      "linux-rpm",
+      "linux-flatpak",
+      "linux-snap"
+    ]
+  },
+  {
+    "key": "PLAY_UPLOAD_KEYSTORE",
+    "name": "Upload Release Keystore",
+    "kind": "secret",
+    "group": "Android",
+    "guide": "android",
+    "targets": [
+      "android-play"
+    ]
+  },
+  {
+    "key": "PLAY_UPLOAD_KEY_ALIAS",
+    "name": "Upload Key Alias",
+    "kind": "id",
+    "group": "Android",
+    "guide": "android",
+    "targets": [
+      "android-play"
+    ]
+  },
+  {
+    "key": "PLAY_UPLOAD_KEYSTORE_PASSWORD",
+    "name": "Upload Keystore Password",
+    "kind": "secret",
+    "group": "Android",
+    "guide": "android",
+    "targets": [
+      "android-play"
+    ]
+  },
+  {
+    "key": "PLAY_UPLOAD_KEY_PASSWORD",
+    "name": "Upload Key Password",
+    "kind": "secret",
+    "group": "Android",
+    "guide": "android",
+    "targets": [
+      "android-play"
+    ]
+  }
+]
