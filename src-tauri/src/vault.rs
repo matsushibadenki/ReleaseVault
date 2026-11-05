@@ -1,4 +1,5 @@
 //! One authenticated document per SQLite database. Only encrypted envelopes reach disk.
+use crate::device::Method;
 use crate::model::Document;
 use argon2::{Algorithm, Argon2, Params, Version};
 use chacha20poly1305::{
@@ -53,6 +54,7 @@ pub struct Envelope {
     format: String,
     salt: Vec<u8>,
     wrapped: Vec<u8>,
+    #[serde(with = "blob")]
     body: Vec<u8>,
 }
 impl Envelope {
@@ -66,7 +68,39 @@ impl Envelope {
         ))
     }
     fn document(&self, k: &Key) -> R<Document> {
-        serde_json::from_slice(&unseal(k, &self.body)?).map_err(|_| "damaged".into())
+        let mut doc: Document =
+            serde_json::from_slice(&unseal(k, &self.body)?).map_err(|_| "damaged")?;
+        // Older vaults could define these keys themselves. Entries are addressed by key.
+        for project in &mut doc.projects {
+            project.custom.retain_mut(|def| {
+                if !matches!(
+                    def.key.as_str(),
+                    "APPLE_ID" | "APPLE_PASSWORD" | "APPLE_ACCOUNT_PASSWORD"
+                ) {
+                    return true;
+                }
+                if def.kind != "secret" || def.key == "APPLE_ACCOUNT_PASSWORD" {
+                    for env in crate::model::ENVS {
+                        let address = format!("{}/{env}/{}", project.id, def.key);
+                        if let Some(entry) = doc.entries.get_mut(&address) {
+                            entry.binding = None;
+                            entry.synced.clear();
+                        }
+                    }
+                    def.kind = "secret".into();
+                }
+                if let Some(builtin) = crate::model::catalog()
+                    .iter()
+                    .find(|item| item.key == def.key)
+                {
+                    def.targets
+                        .retain(|target| !builtin.targets.contains(target));
+                }
+                !def.targets.is_empty()
+            });
+        }
+        doc.refresh_app_ids(k)?;
+        Ok(doc)
     }
 }
 pub struct Session {
@@ -82,7 +116,7 @@ pub struct Vault {
 impl Vault {
     pub fn open(path: &Path) -> R<Self> {
         let db = Connection::open(path).map_err(|_| "storage")?;
-        db.execute_batch("PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS vault(id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL, envelope BLOB NOT NULL);").map_err(|_|"storage")?;
+        db.execute_batch("PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS vault(id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL, envelope BLOB NOT NULL); CREATE TABLE IF NOT EXISTS device_unlock(id INTEGER PRIMARY KEY CHECK(id=1), record BLOB NOT NULL); CREATE TABLE IF NOT EXISTS passkey_unlock(id INTEGER PRIMARY KEY CHECK(id=1), record BLOB NOT NULL);").map_err(|_|"storage")?;
         Ok(Self { db, session: None })
     }
     fn envelope(&self) -> R<Option<(i64, Envelope)>> {
@@ -162,33 +196,100 @@ impl Vault {
         });
         Ok(())
     }
+    pub fn method_enabled(&self, method: Method) -> R<bool> {
+        self.db
+            .query_row(
+                &format!("SELECT EXISTS(SELECT 1 FROM {})", method.table()),
+                [],
+                |r| r.get(0),
+            )
+            .map_err(|_| "storage".into())
+    }
+    pub fn set_method_record(&mut self, method: Method, record: Option<&[u8]>) -> R<()> {
+        self.unlocked()?;
+        match record {
+            Some(bytes) => self.db.execute(
+                &format!("INSERT OR REPLACE INTO {} VALUES (1,?)", method.table()),
+                [bytes],
+            ),
+            None => self
+                .db
+                .execute(&format!("DELETE FROM {}", method.table()), []),
+        }
+        .map_err(|_| "storage")?;
+        Ok(())
+    }
+    pub fn method_record(&self, method: Method) -> R<Vec<u8>> {
+        self.db
+            .query_row(
+                &format!("SELECT record FROM {} WHERE id=1", method.table()),
+                [],
+                |r| r.get(0),
+            )
+            .map_err(|_| method.error().into())
+    }
+    pub fn finish_method_unlock(&mut self, method: Method, record: &[u8], key: Key) -> R<()> {
+        if self.method_record(method)? != record {
+            return Err(method.error().into());
+        }
+        let (revision, envelope) = self.envelope()?.ok_or("missing")?;
+        let doc = envelope.document(&key)?;
+        self.session = Some(Session {
+            key,
+            doc,
+            revision,
+            last: Instant::now(),
+        });
+        Ok(())
+    }
     pub fn reauth(&mut self, p: &str) -> R<()> {
         self.unlocked()?;
         self.envelope()?.ok_or("missing")?.1.key(p)?;
         Ok(())
     }
     pub fn change<T>(&mut self, f: impl FnOnce(&mut Document, &Key) -> R<T>) -> R<T> {
-        let s = self.unlocked()?;
+        self.unlocked()?;
+        let tx = self
+            .db
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(|_| "busy")?;
+        let (stored, envelope): (i64, Vec<u8>) = tx
+            .query_row(
+                "SELECT revision,envelope FROM vault WHERE id=1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|_| "storage")?;
+        let s = self.session.as_ref().ok_or("locked")?;
+        if s.revision != stored {
+            self.session = None;
+            return Err("conflict".into());
+        }
+        let mut e: Envelope = serde_json::from_slice(&envelope).map_err(|_| "damaged")?;
         let mut d = s.doc.clone();
         let result = f(&mut d, &s.key)?;
+        d.refresh_app_ids(&s.key)?;
         let rev = s.revision;
         let body = seal(
             &s.key,
             &Zeroizing::new(serde_json::to_vec(&d).map_err(|_| "storage")?),
         )?;
-        let (_, mut e) = self.envelope()?.ok_or("missing")?;
         e.body = body;
-        let n = self
-            .db
+        let bytes = serde_json::to_vec(&e).map_err(|_| "storage")?;
+        if bytes.len() > 128 * 1024 * 1024 {
+            return Err("size".into());
+        }
+        let n = tx
             .execute(
                 "UPDATE vault SET revision=revision+1,envelope=? WHERE id=1 AND revision=?",
-                params![serde_json::to_vec(&e).map_err(|_| "storage")?, rev],
+                params![bytes, rev],
             )
             .map_err(|_| "storage")?;
         if n != 1 {
             self.session = None;
             return Err("conflict".into());
         }
+        tx.commit().map_err(|_| "storage")?;
         let s = self.session.as_mut().unwrap();
         s.doc = d;
         s.revision += 1;
@@ -265,8 +366,8 @@ impl Vault {
         let Some((_, scope, k)) = due else {
             return Ok(false);
         };
-        let r = self.change(|d, _| {
-            if crate::integrations::fetch_remote(d, &scope, &k).is_err() {
+        let r = self.change(|d, key| {
+            if crate::integrations::fetch_remote(d, &scope, &k, key).is_err() {
                 let b = d
                     .entries
                     .get_mut(&crate::model::Document::address(&scope, &k))
@@ -282,5 +383,19 @@ impl Vault {
         }
         self.expire();
         r.map(|_| true)
+    }
+}
+
+/// Compact ciphertext encoding; a single maximum-size import must remain portable.
+pub mod blob {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use serde::{Deserialize, Deserializer, Serializer};
+    pub fn serialize<S: Serializer>(bytes: &[u8], s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&STANDARD.encode(bytes))
+    }
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
+        STANDARD
+            .decode(String::deserialize(d)?)
+            .map_err(serde::de::Error::custom)
     }
 }

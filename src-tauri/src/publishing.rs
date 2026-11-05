@@ -6,16 +6,24 @@ use crate::{
 };
 use serde_json::json;
 use std::path::Path;
+pub struct ReleaseInfo<'a> {
+    pub version: &'a str,
+    pub platform: &'a str,
+    pub url: &'a str,
+}
 pub fn manifest(
     d: &Document,
     s: &Scope,
     key: &Key,
     artifact: &Path,
     sig: &[u8],
-    version: &str,
-    platform: &str,
-    url: &str,
+    release: ReleaseInfo,
 ) -> R<Vec<u8>> {
+    let ReleaseInfo {
+        version,
+        platform,
+        url,
+    } = release;
     let _ = semver::Version::parse(version).map_err(|_| "invalid")?;
     let os = match s.target.as_str() {
         "mac-direct" => "darwin",
@@ -38,7 +46,9 @@ pub fn manifest(
     {
         return Err("invalid".into());
     }
-    verify_artifact(d, s, artifact, sig, key)?;
+    if verify_artifact(d, s, artifact, sig, key)?.as_deref() != Some(version) {
+        return Err("version".into());
+    }
     serde_json::to_vec_pretty(&json!({"version":version,"pub_date":chrono::Utc::now().to_rfc3339(),"platforms":{(platform):{"signature":std::str::from_utf8(sig.trim_ascii()).map_err(|_|"format")?,"url":url}}})).map_err(|_|"format".into())
 }
 pub fn workflow(s: &Scope) -> R<String> {
@@ -56,29 +66,62 @@ pub fn workflow(s: &Scope) -> R<String> {
         y.push_str("      - name: Install native dependencies\n        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev\n");
     }
     y.push_str("      - run: npm ci\n");
+    y.push_str("      - name: Build application and updater artifacts\n");
     if runner.starts_with("macos") {
-        y.push_str("      - name: Prepare notarization key\n        shell: bash\n        env:\n          P8: ${{ secrets.APPLE_API_KEY_P8 }}\n        run: |\n          umask 077\n          printf '%s' \"$P8\" > \"$RUNNER_TEMP/notary.p8\"\n          echo \"APPLE_API_KEY_PATH=$RUNNER_TEMP/notary.p8\" >> \"$GITHUB_ENV\"\n");
+        y.push_str(r#"        shell: bash
+        run: |
+          set -eu
+          if [[ -n "$P8" ]]; then
+            : "${APPLE_API_KEY:?Missing APPLE_API_KEY}" "${APPLE_API_ISSUER:?Missing APPLE_API_ISSUER}"
+            unset APPLE_ID APPLE_PASSWORD
+            export APPLE_API_KEY_PATH="$RUNNER_TEMP/notary.p8"
+            trap 'rm -f "$APPLE_API_KEY_PATH"' EXIT
+            (umask 077; printf '%s' "$P8" > "$APPLE_API_KEY_PATH")
+          elif [[ -n "$APPLE_ID" || -n "$APPLE_PASSWORD" ]]; then
+            : "${APPLE_ID:?Missing APPLE_ID}" "${APPLE_PASSWORD:?Missing APPLE_PASSWORD}" "${APPLE_TEAM_ID:?Missing APPLE_TEAM_ID}"
+            unset APPLE_API_KEY APPLE_API_ISSUER
+          elif [[ -n "$APPLE_API_KEY" || -n "$APPLE_API_ISSUER" ]]; then
+            echo "Missing APPLE_API_KEY_P8" >&2
+            exit 1
+          else
+            unset APPLE_ID APPLE_PASSWORD APPLE_API_KEY APPLE_API_ISSUER
+          fi
+          unset P8
+          npm exec -- tauri build
+"#);
+    } else {
+        y.push_str("        run: npm exec -- tauri build\n");
     }
-    y.push_str("      - name: Build application and updater artifacts\n        run: npm exec -- tauri build\n        env:\n");
+    y.push_str("        env:\n");
     for k in [PRIVATE, "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"] {
         y.push_str(&format!("          {k}: ${{{{ secrets.{k} }}}}\n"))
     }
     if runner.starts_with("macos") {
-        for k in [
-            "APPLE_CERTIFICATE",
-            "APPLE_CERTIFICATE_PASSWORD",
-            "APPLE_SIGNING_IDENTITY",
-            "APPLE_API_ISSUER",
-            "APPLE_API_KEY",
+        y.push_str("          P8: ${{ secrets.APPLE_API_KEY_P8 }}\n");
+        for (context, keys) in [
+            (
+                "secrets",
+                [
+                    "APPLE_CERTIFICATE",
+                    "APPLE_CERTIFICATE_PASSWORD",
+                    "APPLE_ID",
+                    "APPLE_PASSWORD",
+                ],
+            ),
+            (
+                "vars",
+                [
+                    "APPLE_SIGNING_IDENTITY",
+                    "APPLE_API_ISSUER",
+                    "APPLE_API_KEY",
+                    "APPLE_TEAM_ID",
+                ],
+            ),
         ] {
-            let ty = if k.starts_with("APPLE_CERTIFICATE") {
-                "secrets"
-            } else {
-                "vars"
-            };
-            y.push_str(&format!("          {k}: ${{{{ {ty}.{k} }}}}\n"))
+            for key in keys {
+                y.push_str(&format!("          {key}: ${{{{ {context}.{key} }}}}\n"))
+            }
         }
-        y.push_str("      - if: always()\n        shell: bash\n        run: rm -f \"$RUNNER_TEMP/notary.p8\"\n");
     }
     y.push_str("      - uses: actions/upload-artifact@v4\n        with:\n          name: updater-artifacts\n          path: src-tauri/target/release/bundle/\n          if-no-files-found: error\n");
     Ok(y)

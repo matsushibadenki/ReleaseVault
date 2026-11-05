@@ -3,6 +3,7 @@ name = "releasevault"
 version = "0.1.0"
 edition = "2021"
 [build-dependencies]
+serde_json = "1"
 tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
@@ -23,5 +24,8 @@ minisign = "0.9"
 x509-parser = "0.18"
 open = "5"
 semver="1"
+openssl = { version = "0.10", features = ["vendored"] }
+ureq = {version="2.12",features= ["json"] }
+crypto_box = {version="0.9.1",features= ["seal"] }
 [profile.dev]
 debug = 0

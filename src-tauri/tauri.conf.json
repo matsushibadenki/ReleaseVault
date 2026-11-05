@@ -1,1 +1,32 @@
-{"productName":"ReleaseVault","version":"0.1.0","identifier":"dev.releasevault.desktop","build":{"beforeDevCommand":"npm run dev","devUrl":"http://127.0.0.1:1420","beforeBuildCommand":"npm run build","frontendDist":"../dist"},"app":{"windows":[{"label":"main","title":"ReleaseVault","width":1260,"height":800,"minWidth":540,"minHeight":460}],"security":{"csp":"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"}},"bundle":{"active":true,"targets":"all","icon":["icons/icon.png","icons/icon.icns","icons/icon.ico"]}}
+{
+  "productName": "ReleaseVault",
+  "version": "0.1.0",
+  "identifier": "dev.releasevault.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "ReleaseVault",
+        "width": 1260,
+        "height": 800,
+        "minWidth": 540,
+        "minHeight": 460
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "macOS": { "minimumSystemVersion": "10.15" },
+    "icon": ["icons/icon.png", "icons/icon.icns", "icons/icon.ico"]
+  }
+}

@@ -24,6 +24,8 @@ pub struct Project {
 }
 #[derive(Default, Clone, Serialize, Deserialize)]
 pub struct Binding {
+    #[serde(default)]
+    pub app: Option<crate::github_app::RemoteId>,
     pub repo: String,
     pub environment: String,
     pub polled: String,
@@ -33,7 +35,16 @@ pub struct Binding {
 #[derive(Default, Clone, Serialize, Deserialize)]
 pub struct Entry {
     #[serde(default)]
+    pub owner: Option<u64>,
+    #[serde(default)]
+    pub matched_fingerprint: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub app_password_label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_id_prefix: Option<crate::apple_ids::AppIdPrefix>,
+    #[serde(default)]
     pub binding: Option<Binding>,
+    #[serde(with = "vault::blob")]
     pub cipher: Vec<u8>,
     pub expires: String,
     pub synced: String,
@@ -49,6 +60,8 @@ pub struct Event {
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Document {
+    #[serde(default)]
+    pub github_apps: BTreeMap<u64, crate::github_app::Connection>,
     pub projects: Vec<Project>,
     pub entries: BTreeMap<String, Entry>,
     pub audit: Vec<Event>,
@@ -77,6 +90,7 @@ impl Document {
                 targets: vec!["mac-direct".into(), "mac-store".into()],
                 custom: vec![],
             }],
+            github_apps: BTreeMap::new(),
             entries: BTreeMap::new(),
             audit: vec![],
         }
@@ -117,30 +131,91 @@ impl Document {
     }
     pub fn save(&mut self, s: &Scope, k: &str, b: &[u8], expires: &str, key: &Key) -> R<()> {
         self.def(s, k)?;
+        self.require_owner(s, k)?;
+        if [
+            crate::integrations::PRIVATE,
+            crate::integrations::PUBLIC,
+            crate::integrations::PASS,
+        ]
+        .contains(&k)
+            && self.entry(s, k).is_ok()
+        {
+            return Err("occupied".into());
+        }
         if b.is_empty() || b.len() > 4 * 1024 * 1024 {
             return Err("size".into());
         }
         if !expires.is_empty() {
             chrono::NaiveDate::parse_from_str(expires, "%Y-%m-%d").map_err(|_| "date")?;
         }
+        let app_id_prefix = if k == crate::apple_ids::APP_ID && self.def(s, k)?.guide == "apple-id"
+        {
+            self.entered_app_prefix(s, b, key)?
+        } else {
+            None
+        };
         self.entries.insert(
             Self::address(s, k),
             Entry {
+                app_id_prefix,
                 cipher: vault::seal(key, b)?,
                 expires: expires.into(),
                 ..Default::default()
             },
         );
+        self.invalidate_linked_metadata(s, k);
         self.event(s, k, "save");
         Ok(())
     }
-    pub fn entry(&self, s: &Scope, k: &str) -> R<&Entry> {
-        self.def(s, k)?;
-        self.entries
-            .get(&Self::address(s, k))
-            .ok_or_else(|| "missing".into())
+    pub(crate) fn invalidate_linked_metadata(&mut self, s: &Scope, k: &str) {
+        for project in self.dependents(s, k) {
+            let linked = Scope {
+                project,
+                ..s.clone()
+            };
+            if let Some(e) = self.entries.get_mut(&Self::address(&linked, k)) {
+                e.synced.clear();
+                e.binding = None;
+            }
+            self.event(&linked, k, "source-changed");
+        }
     }
-    pub fn add_project(&mut self, name: &str, targets: Vec<String>) -> R<u64> {
+    pub fn save_app_password(
+        &mut self,
+        s: &Scope,
+        password: &[u8],
+        label: &str,
+        expires: &str,
+        key: &Key,
+    ) -> R<()> {
+        const FIELD: &str = "APPLE_PASSWORD";
+        if self.def(s, FIELD)?.guide != "apple-account"
+            || label.chars().count() > 200
+            || label.chars().any(char::is_control)
+        {
+            return Err("invalid".into());
+        }
+        self.require_owner(s, FIELD)?;
+        if password.is_empty() {
+            if !expires.is_empty() {
+                chrono::NaiveDate::parse_from_str(expires, "%Y-%m-%d").map_err(|_| "date")?;
+            }
+            let entry = self
+                .entries
+                .get_mut(&Self::address(s, FIELD))
+                .ok_or("missing")?;
+            entry.expires = expires.into();
+            self.event(s, FIELD, "save");
+        } else {
+            self.save(s, FIELD, password, expires, key)?;
+        }
+        self.entries
+            .get_mut(&Self::address(s, FIELD))
+            .ok_or("missing")?
+            .app_password_label = label.trim().into();
+        Ok(())
+    }
+    fn validate_project(name: &str, targets: &[String]) -> R<()> {
         if name.trim().is_empty()
             || name.len() > 120
             || targets.is_empty()
@@ -151,6 +226,21 @@ impl Document {
         {
             return Err("invalid".into());
         }
+        Ok(())
+    }
+    pub fn edit_project(&mut self, id: u64, name: &str, targets: Vec<String>) -> R<()> {
+        Self::validate_project(name, &targets)?;
+        let p = self
+            .projects
+            .iter_mut()
+            .find(|p| p.id == id)
+            .ok_or("scope")?;
+        p.name = name.trim().into();
+        p.targets = targets;
+        Ok(())
+    }
+    pub fn add_project(&mut self, name: &str, targets: Vec<String>) -> R<u64> {
+        Self::validate_project(name, &targets)?;
         let id = self.projects.iter().map(|p| p.id).max().unwrap_or(0) + 1;
         self.projects.push(Project {
             id,

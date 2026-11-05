@@ -13,6 +13,45 @@
     ]
   },
   {
+    "key": "APPLE_ID",
+    "name": "Apple ID (email)",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "apple-account",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_ACCOUNT_PASSWORD",
+    "name": "Apple Account sign-in password",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "apple-account",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "APPLE_PASSWORD",
+    "name": "Apple app-specific password",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "apple-account",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
     "key": "APPLE_BUNDLE_ID",
     "name": "Bundle ID",
     "kind": "id",
@@ -479,6 +518,189 @@
     "guide": "android",
     "targets": [
       "android-play"
+    ]
+  },
+  {
+    "key": "APPLE_INSTALLER_IDENTITY",
+    "name": "Developer ID Installer (PKG)",
+    "kind": "id",
+    "group": "Apple",
+    "guide": "developer-id",
+    "targets": [
+      "mac-direct"
+    ]
+  },
+  {
+    "key": "APPLE_INSTALLER_PASSWORD",
+    "name": "Installer PKCS#12 Password",
+    "kind": "secret",
+    "group": "Apple",
+    "guide": "apple-store",
+    "targets": [
+      "mac-store"
+    ]
+  },
+  {
+    "key": "APPLE_APP_ID",
+    "name": "App ID",
+    "kind": "id",
+    "group": "Apple",
+    "guide": "apple-id",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados"
+    ]
+  },
+  {
+    "key": "PLAY_UPLOAD_SHA256",
+    "name": "Upload Certificate SHA-256",
+    "kind": "id",
+    "group": "Google Play",
+    "guide": "play",
+    "targets": [
+      "android-play"
+    ]
+  },
+  {
+    "key": "GOOGLE_CLOUD_PROJECT",
+    "name": "Google Cloud Project ID",
+    "kind": "id",
+    "group": "Google Play",
+    "guide": "play",
+    "targets": [
+      "android-play"
+    ]
+  },
+  {
+    "key": "ANDROID_VERSION_CODE",
+    "name": "Version Code",
+    "kind": "config",
+    "group": "Google Play",
+    "guide": "play",
+    "targets": [
+      "android-play"
+    ]
+  },
+  {
+    "key": "WINDOWS_PFX",
+    "name": "Signing Certificate (.pfx)",
+    "kind": "secret",
+    "group": "Windows",
+    "guide": "windows",
+    "targets": [
+      "windows-direct",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "WINDOWS_PFX_PASSWORD",
+    "name": "PFX Password",
+    "kind": "secret",
+    "group": "Windows",
+    "guide": "windows",
+    "targets": [
+      "windows-direct",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "AZURE_TENANT_ID",
+    "name": "Azure Tenant ID",
+    "kind": "id",
+    "group": "Windows",
+    "guide": "windows",
+    "targets": [
+      "windows-direct",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "AZURE_CLIENT_ID",
+    "name": "Azure Client ID",
+    "kind": "id",
+    "group": "Windows",
+    "guide": "windows",
+    "targets": [
+      "windows-direct",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "AZURE_SIGNING_ENDPOINT",
+    "name": "Artifact Signing Endpoint",
+    "kind": "config",
+    "group": "Windows",
+    "guide": "windows",
+    "targets": [
+      "windows-direct",
+      "windows-exe"
+    ]
+  },
+  {
+    "key": "TAURI_UPDATER_VERSION",
+    "name": "Release Version",
+    "kind": "config",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
+    ]
+  },
+  {
+    "key": "TAURI_UPDATER_PLATFORM",
+    "name": "Target Platform",
+    "kind": "config",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
+    ]
+  },
+  {
+    "key": "TAURI_UPDATER_ARTIFACT",
+    "name": "Artifact URL",
+    "kind": "config",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
+    ]
+  },
+  {
+    "key": "TAURI_UPDATER_SIGNATURE",
+    "name": "Artifact Signature",
+    "kind": "config",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
+    ]
+  },
+  {
+    "key": "TAURI_UPDATE_MANIFEST",
+    "name": "Update Manifest",
+    "kind": "config",
+    "group": "Tauri",
+    "guide": "updater",
+    "targets": [
+      "mac-direct",
+      "windows-direct",
+      "windows-exe",
+      "linux-appimage"
     ]
   }
 ]

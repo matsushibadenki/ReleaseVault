@@ -69,7 +69,13 @@ pub fn check_conf(d: &mut Document, s: &Scope, b: &[u8], key: &Key) -> R<()> {
     d.event(s, PUBLIC, "config-match");
     Ok(())
 }
-pub fn verify_artifact(d: &Document, s: &Scope, path: &Path, sig: &[u8], key: &Key) -> R<()> {
+pub fn verify_artifact(
+    d: &Document,
+    s: &Scope,
+    path: &Path,
+    sig: &[u8],
+    key: &Key,
+) -> R<Option<String>> {
     let pk = B64
         .decode(value(d, s, PUBLIC, key)?.trim_ascii())
         .map_err(|_| "format")?;
@@ -88,7 +94,12 @@ pub fn verify_artifact(d: &Document, s: &Scope, path: &Path, sig: &[u8], key: &K
         }
         verifier.update(&buf[..n])
     }
-    verifier.finalize().map_err(|_| "mismatch".into())
+    verifier.finalize().map_err(|_| "mismatch")?;
+    Ok(sig
+        .trusted_comment()
+        .split('\t')
+        .find_map(|field| field.strip_prefix("version:"))
+        .map(str::to_owned))
 }
 pub fn dest(repo: &str, env: &str) -> R<String> {
     let ok = |v: &str| {
@@ -125,6 +136,20 @@ fn gh() -> Command {
     c
 }
 pub fn github(d: &mut Document, s: &Scope, k: &str, repo: &str, env: &str, key: &Key) -> R<()> {
+    github_with(d, s, k, repo, env, key, gh())
+}
+pub(super) fn github_with(
+    d: &mut Document,
+    s: &Scope,
+    k: &str,
+    repo: &str,
+    env: &str,
+    key: &Key,
+    mut cmd: Command,
+) -> R<()> {
+    if d.github_apps.contains_key(&s.project) {
+        return Err("app-policy".into());
+    }
     let target = dest(repo, env)?;
     if !key_ok(k) {
         return Err("reserved".into());
@@ -134,7 +159,7 @@ pub fn github(d: &mut Document, s: &Scope, k: &str, repo: &str, env: &str, key: 
     if bytes.len() > 48 * 1024 {
         return Err("limit".into());
     }
-    let mut cmd = gh();
+
     cmd.args([
         if is_secret { "secret" } else { "variable" },
         "set",
@@ -156,6 +181,17 @@ pub fn github(d: &mut Document, s: &Scope, k: &str, repo: &str, env: &str, key: 
     if !ok || written.is_err() {
         return Err("gh".into());
     }
+    record_sent(d, s, k, repo, env, None)
+}
+pub(super) fn record_sent(
+    d: &mut Document,
+    s: &Scope,
+    k: &str,
+    repo: &str,
+    env: &str,
+    app: Option<crate::github_app::RemoteId>,
+) -> R<()> {
+    let target = format!("github.com/{repo}");
     d.entries.get_mut(&Document::address(s, k)).unwrap().synced = format!(
         "{} · {}{}{}",
         chrono::Utc::now().format("%Y-%m-%d %H:%M UTC"),
@@ -164,6 +200,7 @@ pub fn github(d: &mut Document, s: &Scope, k: &str, repo: &str, env: &str, key: 
         env
     );
     d.entries.get_mut(&Document::address(s, k)).unwrap().binding = Some(Binding {
+        app,
         repo: repo.into(),
         environment: env.into(),
         ..Default::default()
@@ -257,8 +294,26 @@ fn wait(c: &mut std::process::Child) -> R<bool> {
         std::thread::sleep(std::time::Duration::from_millis(50))
     }
 }
-pub fn fetch_remote(d: &mut Document, s: &Scope, k: &str) -> R<()> {
-    let binding = d.entry(s, k)?.binding.as_ref().ok_or("missing")?;
+pub fn fetch_remote(d: &mut Document, s: &Scope, k: &str, key: &Key) -> R<()> {
+    let binding = d.local_entry(s, k)?.binding.as_ref().ok_or("missing")?;
+    let remote = if binding.app.is_some() {
+        crate::github_app::poll(d, s, k, key, binding)?
+    } else {
+        if d.github_apps.contains_key(&s.project) {
+            return Err("app-policy".into());
+        }
+        cli_timestamp(d, s, k, binding)?
+    };
+    let b = d
+        .entries
+        .get_mut(&Document::address(s, k))
+        .and_then(|e| e.binding.as_mut())
+        .ok_or("missing")?;
+    b.remote = remote;
+    b.polled = chrono::Utc::now().to_rfc3339();
+    Ok(())
+}
+fn cli_timestamp(d: &Document, s: &Scope, k: &str, binding: &Binding) -> R<String> {
     let repo = dest(&binding.repo, &binding.environment)?;
     if !key_ok(k) {
         return Err("reserved".into());
@@ -303,12 +358,5 @@ pub fn fetch_remote(d: &mut Document, s: &Scope, k: &str) -> R<()> {
     if !remote.is_empty() {
         chrono::DateTime::parse_from_rfc3339(remote).map_err(|_| "gh")?;
     }
-    let b = d
-        .entries
-        .get_mut(&Document::address(s, k))
-        .and_then(|e| e.binding.as_mut())
-        .ok_or("missing")?;
-    b.remote = remote.into();
-    b.polled = chrono::Utc::now().to_rfc3339();
-    Ok(())
+    Ok(remote.into())
 }

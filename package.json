@@ -1,1 +1,24 @@
-{"name":"releasevault","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"vite --host 127.0.0.1 --port 1420 --strictPort","build":"tsc --noEmit && vite build","tauri":"tauri"},"dependencies":{"react":"19.2.8","react-dom":"19.2.8","lucide-react":"0.577.0","@tauri-apps/api":"2.12.4"},"devDependencies":{"vite":"7.3.7","typescript":"5.9.3","@types/react":"19.2.18","@types/react-dom":"19.2.3","@tauri-apps/cli":"2.12.4"}}
+{
+  "name": "releasevault",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "lucide-react": "0.577.0",
+    "@tauri-apps/api": "2.12.4"
+  },
+  "devDependencies": {
+    "vite": "7.3.7",
+    "typescript": "5.9.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.3",
+    "@tauri-apps/cli": "2.12.4"
+  }
+}

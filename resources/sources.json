@@ -1,1 +1,855 @@
-{"apple-id":"https://developer.apple.com/account/resources/identifiers/list","asc":"https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api","developer-id":"https://developer.apple.com/developer-id/","apple-store":"https://v2.tauri.app/distribute/app-store/","android":"https://developer.android.com/studio/publish/app-signing","play":"https://developers.google.com/android-publisher/getting_started","windows":"https://v2.tauri.app/distribute/sign/windows/","microsoft":"https://learn.microsoft.com/windows/apps/publish/","gpg":"https://www.gnupg.org/gph/en/manual/c14.html","flatpak":"https://docs.flathub.org/docs/for-app-authors/submission/","snap":"https://documentation.ubuntu.com/snapcraft/stable/reference/commands/export-login/","updater":"https://v2.tauri.app/plugin/updater/","github":"https://cli.github.com/manual/gh_secret_set"}
+{
+  "links": {
+    "team": {
+      "docs": "https://developer.apple.com/help/glossary/team-id/",
+      "get": "https://developer.apple.com/account/#MembershipDetailsCard",
+      "instruction": [
+        "Apple Developerで対象チームを選び、メンバーシップの詳細からTeam IDをコピーします。",
+        "Select the team in Apple Developer and copy its Team ID from Membership details.",
+        "在 Apple Developer 中选择团队，从会员资格详情复制 Team ID。"
+      ]
+    },
+    "account": {
+      "docs": "https://support.apple.com/102627",
+      "get": "https://account.apple.com/"
+    },
+    "app-password": {
+      "docs": "https://support.apple.com/102654",
+      "get": "https://account.apple.com/"
+    },
+    "identifier": {
+      "docs": "https://developer.apple.com/help/account/identifiers/register-an-app-id/",
+      "get": "https://developer.apple.com/account/resources/identifiers/list",
+      "instruction": [
+        "Identifiersで対象アプリのApp IDを開き、プロジェクトで使用する識別子と照合します。",
+        "Open the app’s record under Identifiers and match its identifier to the project settings.",
+        "在 Identifiers 中打开应用的 App ID，与项目设置中的标识符核对。"
+      ]
+    },
+    "asc": {
+      "docs": "https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api",
+      "get": "https://appstoreconnect.apple.com/access/integrations/api"
+    },
+    "developer-id": {
+      "docs": "https://developer.apple.com/help/account/certificates/create-developer-id-certificates/",
+      "get": "https://developer.apple.com/account/resources/certificates/list",
+      "instruction": [
+        "Apple Developerで用途に合うDeveloper ID証明書を選びます。アプリにはApplication、インストーラにはInstallerを使用します。",
+        "Select the appropriate Developer ID certificate: Application for the app or Installer for its installer package.",
+        "在 Apple Developer 中选择相应的 Developer ID 证书：应用使用 Application，安装包使用 Installer。"
+      ]
+    },
+    "store-cert": {
+      "docs": "https://developer.apple.com/support/certificates/",
+      "get": "https://developer.apple.com/account/resources/certificates/list"
+    },
+    "p12": {
+      "docs": "https://developer.apple.com/documentation/xcode/sharing-your-teams-signing-certificates",
+      "get": "https://support.apple.com/guide/keychain-access/import-and-export-keychain-items-kyca35961/mac",
+      "local": true,
+      "instruction": [
+        "キーチェーンアクセスで証明書と秘密鍵を.p12に書き出し、その際に設定したパスワードを保存します。",
+        "Export the certificate and its private key as a .p12 from Keychain Access. Save the password you set during export.",
+        "从钥匙串访问将证书与私钥导出为 .p12，并保存导出时设置的密码。"
+      ]
+    },
+    "profile": {
+      "docs": "https://developer.apple.com/help/account/provisioning-profiles/create-an-app-store-provisioning-profile/",
+      "get": "https://developer.apple.com/account/resources/profiles/list"
+    },
+    "runtime": {
+      "docs": "https://developer.apple.com/documentation/security/hardened-runtime",
+      "get": "https://developer.apple.com/documentation/xcode/configuring-the-hardened-runtime",
+      "local": true,
+      "instruction": [
+        "Xcodeの対象ターゲットで「Signing & Capabilities」を開き、Hardened Runtimeの設定を確認します。",
+        "Open Signing & Capabilities for the Xcode target and check the Hardened Runtime setting.",
+        "在 Xcode 目标的 Signing & Capabilities 中查看 Hardened Runtime 设置。"
+      ]
+    },
+    "entitlements": {
+      "docs": "https://developer.apple.com/documentation/bundleresources/entitlements",
+      "get": "https://developer.apple.com/documentation/xcode/adding-capabilities-to-your-app",
+      "local": true,
+      "instruction": [
+        "対象ターゲットの署名設定から.entitlementsファイルを特定し、配布ビルドで使う内容を確認します。",
+        "Find the target’s .entitlements file in its signing settings and check the contents used by the distribution build.",
+        "在目标的签名设置中找到 .entitlements 文件，核对分发构建使用的内容。"
+      ]
+    },
+    "sandbox": {
+      "docs": "https://developer.apple.com/documentation/security/app-sandbox",
+      "get": "https://developer.apple.com/documentation/xcode/configuring-the-macos-app-sandbox",
+      "local": true,
+      "instruction": [
+        "Xcodeの対象ターゲットで「Signing & Capabilities」を開き、App Sandboxの設定を確認します。",
+        "Open Signing & Capabilities for the Xcode target and check App Sandbox.",
+        "在 Xcode 目标的 Signing & Capabilities 中查看 App Sandbox 设置。"
+      ]
+    },
+    "app-id": {
+      "docs": "https://developer.android.com/build/configure-app-module",
+      "get": "https://developer.android.com/build/configure-app-module#set-application-id",
+      "local": true,
+      "instruction": [
+        "アプリモジュールのGradle設定を開き、配布するビルドのapplicationIdを確認します。",
+        "Open the app module’s Gradle configuration and read the applicationId for the release variant.",
+        "打开应用模块的 Gradle 配置，查看发布变体的 applicationId。"
+      ]
+    },
+    "keystore": {
+      "docs": "https://developer.android.com/studio/publish/app-signing",
+      "get": "https://developer.android.com/studio/publish/app-signing#generate-key",
+      "local": true
+    },
+    "play-cert": {
+      "docs": "https://developer.android.com/studio/publish/app-signing#app-signing-google-play",
+      "get": "https://play.google.com/console/"
+    },
+    "play-track": {
+      "docs": "https://support.google.com/googleplay/android-developer/answer/9859348",
+      "get": "https://play.google.com/console/",
+      "instruction": [
+        "Play Consoleで対象アプリのテストまたは製品版トラックを選び、公開ワークフローに設定するトラック名を確認します。",
+        "Select the testing or production track for the app in Play Console and check the track name used in your release workflow.",
+        "在 Play 管理中心选择应用的测试或正式版轨道，确认发布工作流所用的轨道名称。"
+      ]
+    },
+    "service-account": {
+      "docs": "https://developers.google.com/android-publisher/getting_started",
+      "get": "https://console.cloud.google.com/iam-admin/serviceaccounts",
+      "instruction": [
+        "Google Cloudで公開用サービスアカウントのJSON鍵を作成し、Play Consoleで対象アプリへの公開権限を付与します。",
+        "Create a JSON key for the publishing service account in Google Cloud and grant it publishing access to the app in Play Console.",
+        "在 Google Cloud 中为发布服务账号创建 JSON 密钥，并在 Play 管理中心为其授予应用发布权限。"
+      ]
+    },
+    "cloud-project": {
+      "docs": "https://cloud.google.com/resource-manager/docs/creating-managing-projects",
+      "get": "https://console.cloud.google.com/cloud-resource-manager",
+      "instruction": [
+        "Google Cloudで公開用サービスアカウントのプロジェクトを選び、プロジェクトIDをコピーします。",
+        "In Google Cloud, select the project that owns the publishing service account and copy its project ID.",
+        "在 Google Cloud 中选择发布服务账号所属项目，并复制项目 ID。"
+      ]
+    },
+    "version-code": {
+      "docs": "https://developer.android.com/studio/publish/versioning",
+      "get": "https://developer.android.com/studio/publish/versioning#versioningsettings",
+      "local": true,
+      "instruction": [
+        "アプリのGradle設定で、配布するビルドのversionCodeを確認します。",
+        "Read the release variant’s versionCode in the app’s Gradle configuration.",
+        "在应用的 Gradle 配置中查看发布变体的 versionCode。"
+      ]
+    },
+    "windows-sign": {
+      "docs": "https://v2.tauri.app/distribute/sign/windows/",
+      "get": "https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/certmgr",
+      "local": true
+    },
+    "pfx": {
+      "docs": "https://learn.microsoft.com/en-us/windows/win32/seccrypto/using-signtool-to-sign-a-file",
+      "get": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/export-certificate-private-key",
+      "local": true,
+      "instruction": [
+        "Windowsの証明書エクスポートウィザードで秘密鍵を含むPFXを書き出し、設定したパスワードを控えます。",
+        "Export a PFX with its private key using the Windows Certificate Export Wizard and record the password you set.",
+        "使用 Windows 证书导出向导导出包含私钥的 PFX，并记录设置的密码。"
+      ]
+    },
+    "partner": {
+      "docs": "https://learn.microsoft.com/en-us/windows/apps/publish/view-app-identity-details",
+      "get": "https://partner.microsoft.com/dashboard/apps-and-games/overview"
+    },
+    "azure-app": {
+      "docs": "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app",
+      "get": "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade",
+      "instruction": [
+        "Microsoft Entraの「アプリの登録」で署名に使うアプリを開き、概要から該当するIDをコピーします。",
+        "Open the signing app under App registrations in Microsoft Entra and copy the requested ID from Overview.",
+        "在 Microsoft Entra 的“应用注册”中打开签名应用，从概述页复制相应的 ID。"
+      ]
+    },
+    "azure-sign": {
+      "docs": "https://learn.microsoft.com/en-us/azure/artifact-signing/quickstart",
+      "get": "https://portal.azure.com/#view/HubsExtension/BrowseResource/resourceType/Microsoft.CodeSigning%2FcodeSigningAccounts",
+      "instruction": [
+        "Azureポータルで署名アカウントのリージョンを確認し、公式手順のリージョン別エンドポイントと照合します。",
+        "Check the signing account’s region in the Azure portal and match it to the regional endpoint in the official guide.",
+        "在 Azure 门户确认签名账户的区域，并与官方指南中的区域终结点核对。"
+      ]
+    },
+    "gpg": {
+      "docs": "https://www.gnupg.org/documentation/manuals/gnupg/Invoking-GPG.html",
+      "get": "https://www.gnupg.org/documentation/manuals/gnupg/OpenPGP-Key-Management.html",
+      "local": true
+    },
+    "flatpak": {
+      "docs": "https://docs.flatpak.org/en/latest/conventions.html",
+      "get": "https://docs.flathub.org/docs/for-app-authors/submission",
+      "local": true
+    },
+    "snap": {
+      "docs": "https://snapcraft.io/docs/snapcraft-authentication",
+      "get": "https://documentation.ubuntu.com/snapcraft/stable/reference/commands/export-login/",
+      "local": true
+    },
+    "updater-key": {
+      "docs": "https://v2.tauri.app/plugin/updater/",
+      "get": "https://v2.tauri.app/plugin/updater/#signing-updates",
+      "local": true
+    },
+    "updater-config": {
+      "docs": "https://v2.tauri.app/plugin/updater/",
+      "get": "https://v2.tauri.app/plugin/updater/#endpoints",
+      "local": true,
+      "instruction": [
+        "配布チャンネルごとの更新URLを確認し、tauri.conf.jsonのplugins.updater.endpointsと照合します。",
+        "Check the update URL for each release channel against plugins.updater.endpoints in tauri.conf.json.",
+        "核对各发布渠道的更新 URL 与 tauri.conf.json 中的 plugins.updater.endpoints。"
+      ]
+    },
+    "version": {
+      "docs": "https://v2.tauri.app/plugin/updater/",
+      "get": "https://v2.tauri.app/reference/config/#version",
+      "local": true,
+      "instruction": [
+        "リリース対象のtauri.conf.jsonと更新マニフェストを開き、配布するバージョンを確認します。",
+        "Check the version being released in tauri.conf.json and the update manifest.",
+        "打开待发布的 tauri.conf.json 和更新清单，核对版本号。"
+      ]
+    },
+    "updater-json": {
+      "docs": "https://v2.tauri.app/plugin/updater/",
+      "get": "https://v2.tauri.app/plugin/updater/#static-json-file",
+      "local": true,
+      "instruction": [
+        "署名済みの更新ファイルと.sigを用意し、配布先のURL・対象プラットフォーム・署名を更新JSONと照合します。",
+        "Locate the updater artifact and its .sig file. Match its download URL, target platform and signature to the update JSON.",
+        "找到更新产物及其 .sig 文件，对照更新 JSON 核对下载 URL、目标平台和签名。"
+      ]
+    },
+    "repo": {
+      "docs": "https://docs.github.com/en/repositories/creating-and-managing-repositories/about-repositories",
+      "get": "https://github.com/settings/repositories"
+    },
+    "account-password": {
+      "docs": "https://support.apple.com/101567",
+      "get": "https://account.apple.com/",
+      "instruction": [
+        "Apple Accountにサインインするときのパスワードを入力します。変更した場合は、この欄も更新してください。",
+        "Enter the password you use to sign in to your Apple Account. Update this field after changing it.",
+        "输入登录 Apple 账户时使用的密码。修改密码后，请同步更新此字段。"
+      ]
+    },
+    "apple-app-id": {
+      "docs": "https://developer.apple.com/help/glossary/app-id/",
+      "get": "https://developer.apple.com/account/resources/identifiers/list",
+      "instruction": [
+        "Apple Developerの「Certificates, Identifiers & Profiles」→「Identifiers」で対象のBundle IDを選びます。詳細に表示される「App ID Prefix」と「Bundle ID」をピリオドでつないで入力します。",
+        "In Apple Developer, open Certificates, Identifiers & Profiles → Identifiers and select the app’s Bundle ID. Join the App ID Prefix and Bundle ID from its details with a period.",
+        "在 Apple Developer 的“Certificates, Identifiers & Profiles”→“Identifiers”中选择应用的 Bundle ID。将详情中的 App ID Prefix 与 Bundle ID 用英文句点连接后填入。"
+      ]
+    }
+  },
+  "items": {
+    "APPLE_TEAM_ID": {
+      "links": "team",
+      "purpose": [
+        "Apple Developerの所属チームを特定するIDです。署名や公証をどのチーム名義で行うかを指定します。",
+        "Identifies your Apple Developer team for signing and notarization.",
+        "标识 Apple Developer 团队，用于指定签名和公证所属的团队。"
+      ],
+      "example": "AB12C3D4E5"
+    },
+    "APPLE_ID": {
+      "links": "account",
+      "purpose": [
+        "Apple Accountのサインイン用メールアドレスです。公証やストアへのアップロードでアプリ用パスワードと組み合わせます。",
+        "The email used to sign in to your Apple Account. Pair it with an app-specific password for notarization or store uploads.",
+        "Apple 账户的登录邮箱。公证或上传到商店时，与 App 专用密码配合使用。"
+      ],
+      "example": "developer@example.com"
+    },
+    "APPLE_PASSWORD": {
+      "links": "app-password",
+      "purpose": [
+        "account.apple.comで発行するアプリ用パスワードです。公証やアップロードのツールが、APPLE_IDに入力したメールアドレスと組み合わせて使います。",
+        "Generate this app-specific password at account.apple.com. Notarization and upload tools use it with the email address in APPLE_ID.",
+        "在 account.apple.com 生成此 App 专用密码。公证和上传工具将其与 APPLE_ID 中的邮箱配合使用。"
+      ],
+      "example": "abcd-efgh-ijkl-mnop"
+    },
+    "APPLE_BUNDLE_ID": {
+      "links": "identifier",
+      "purpose": [
+        "アプリを識別する文字列です。ビルドのBundle IDを、Appleに登録した識別子やプロファイルと一致させます。",
+        "Identifies the app bundle. The build must match the identifier registered with Apple and its provisioning profile.",
+        "标识应用包。构建中的 Bundle ID 应与 Apple 注册的标识符及描述文件一致。"
+      ],
+      "example": "com.example.releasevault"
+    },
+    "APPLE_API_ISSUER": {
+      "links": "asc",
+      "purpose": [
+        "App Store ConnectのチームAPIキーの発行元を識別します。認証トークンを作る際にKey IDと一緒に指定します。",
+        "Identifies the issuer of a team API key when creating an App Store Connect token.",
+        "标识团队 API 密钥的签发方，生成 App Store Connect 令牌时与密钥 ID 配合使用。"
+      ],
+      "example": "01234567-89ab-4cde-8012-3456789abcde"
+    },
+    "APPLE_API_KEY": {
+      "links": "asc",
+      "purpose": [
+        "App Store Connectで発行したAPIキーのIDです。署名に使った.p8秘密鍵をApple側で特定できます。",
+        "Identifies which App Store Connect API key signed the token with its .p8 private key.",
+        "标识用于签署令牌的 App Store Connect API 密钥，与 .p8 私钥对应。"
+      ],
+      "example": "K1A2B3C4D5"
+    },
+    "APPLE_API_KEY_P8": {
+      "links": "asc",
+      "purpose": [
+        "App Store Connectの認証トークンに署名する秘密鍵です。CIからアップロードや公証を行う際に使います。",
+        "The private key that signs App Store Connect tokens for automated uploads or notarization.",
+        "用于签署 App Store Connect 认证令牌的私钥，供自动化上传或公证使用。"
+      ],
+      "example": "-----BEGIN PRIVATE KEY----- … -----END PRIVATE KEY-----"
+    },
+    "APPLE_CERTIFICATE": {
+      "links": "developer-id",
+      "purpose": [
+        "Mac App Store以外で配布するアプリの署名証明書と秘密鍵をまとめた.p12です。ビルド環境に署名者の情報を移します。",
+        "A .p12 holding the Developer ID Application certificate and private key for signing apps distributed outside the Mac App Store.",
+        "包含 Developer ID Application 证书和私钥的 .p12，用于签署在 Mac App Store 之外分发的应用。"
+      ],
+      "example": [
+        "Signing.p12 をBase64に変換した文字列",
+        "Base64-encoded contents of Signing.p12",
+        "Signing.p12 的 Base64 编码内容"
+      ]
+    },
+    "APPLE_CERTIFICATE_PASSWORD": {
+      "links": "p12",
+      "purpose": [
+        "Developer ID Applicationの.p12を書き出した際に設定したパスワードです。ビルド環境に秘密鍵を読み込むときに使います。",
+        "Unlocks the exported Developer ID Application .p12 so the build machine can import the signing key.",
+        "导出 Developer ID Application 的 .p12 时设置的密码，构建环境使用它导入签名私钥。"
+      ],
+      "example": "Example-Export!42"
+    },
+    "APPLE_SIGNING_IDENTITY": {
+      "links": "developer-id",
+      "purpose": [
+        "キーチェーン内のDeveloper ID Application署名者名です。アプリに署名する証明書を選ぶために指定します。",
+        "Selects the Developer ID Application signing identity from the keychain when signing the app.",
+        "指定钥匙串中的 Developer ID Application 签名身份，决定签署应用时使用哪张证书。"
+      ],
+      "example": "Developer ID Application: Example Studio (AB12C3D4E5)"
+    },
+    "HARDENED_RUNTIME": {
+      "links": "runtime",
+      "purpose": [
+        "macOSが実行時にコードの読み込みなどを制限する保護設定です。Developer IDで公証するアプリでは署名時に有効化します。",
+        "Enables macOS runtime protections during code signing for Developer ID notarization.",
+        "在签名时启用 macOS 运行时保护，用于 Developer ID 公证。"
+      ],
+      "example": "true"
+    },
+    "APPLE_STORE_CERTIFICATE": {
+      "links": "store-cert",
+      "purpose": [
+        "ストア配布用のApple Distribution証明書と秘密鍵を含む.p12です。提出するアプリの署名に使います。",
+        "A .p12 containing the Apple Distribution certificate and private key for signing store submissions.",
+        "包含 Apple Distribution 证书和私钥的 .p12，用于签署提交商店的应用。"
+      ],
+      "example": [
+        "Signing.p12 をBase64に変換した文字列",
+        "Base64-encoded contents of Signing.p12",
+        "Signing.p12 的 Base64 编码内容"
+      ]
+    },
+    "APPLE_STORE_CERTIFICATE_PASSWORD": {
+      "links": "p12",
+      "purpose": [
+        "Apple Distributionの.p12を書き出した際に設定したパスワードです。ビルド環境に秘密鍵を読み込むときに使います。",
+        "Unlocks the exported Apple Distribution .p12 so the build machine can import the signing key.",
+        "导出 Apple Distribution 的 .p12 时设置的密码，构建环境使用它导入签名私钥。"
+      ],
+      "example": "Example-Export!42"
+    },
+    "APPLE_PROVISIONING_PROFILE": {
+      "links": "profile",
+      "purpose": [
+        "アプリID、署名証明書、許可された機能を結び付けるファイルです。ストア配布ビルドに組み込みます。",
+        "Links an app ID, signing certificate and allowed capabilities in a store distribution build.",
+        "将应用 ID、签名证书及允许的能力关联起来，嵌入商店分发构建中。"
+      ],
+      "example": [
+        "AppStore.mobileprovision をBase64に変換した文字列",
+        "Base64-encoded contents of AppStore.mobileprovision",
+        "AppStore.mobileprovision 的 Base64 编码内容"
+      ]
+    },
+    "APPLE_ENTITLEMENTS": {
+      "links": "entitlements",
+      "purpose": [
+        "アプリが使う権限を宣言する設定です。署名に含める権限をプロファイルや有効にした機能とそろえます。",
+        "Declares the capabilities embedded in the app signature. They must match the enabled services and profile.",
+        "声明随应用签名写入的权限，应与启用的服务和描述文件一致。"
+      ],
+      "example": "<key>com.apple.security.app-sandbox</key><true/>"
+    },
+    "APPLE_INSTALLER_CERTIFICATE": {
+      "links": "store-cert",
+      "purpose": [
+        "Mac App Storeに提出するインストーラパッケージを署名する証明書と秘密鍵です。",
+        "The certificate and private key for signing installer packages submitted to the Mac App Store.",
+        "用于签署提交 Mac App Store 的安装包的证书和私钥。"
+      ],
+      "example": [
+        "Signing.p12 をBase64に変換した文字列",
+        "Base64-encoded contents of Signing.p12",
+        "Signing.p12 的 Base64 编码内容"
+      ]
+    },
+    "APPLE_APP_SANDBOX": {
+      "links": "sandbox",
+      "purpose": [
+        "macOSアプリがアクセスできるファイルやシステム資源を制限する設定です。Mac App Store配布で使用します。",
+        "Restricts access to files and system resources for Mac App Store apps.",
+        "限制 macOS 应用对文件和系统资源的访问，用于 Mac App Store 分发。"
+      ],
+      "example": "true"
+    },
+    "ANDROID_PACKAGE_NAME": {
+      "links": "app-id",
+      "purpose": [
+        "Androidがインストールや更新時にアプリを識別するApplication IDです。Google Playへの登録にも使います。",
+        "The Android application ID used for installation, updates and the Google Play listing.",
+        "Android 安装和更新应用时使用的应用 ID，也用于 Google Play 上架。"
+      ],
+      "example": "com.example.releasevault"
+    },
+    "ANDROID_KEYSTORE": {
+      "links": "keystore",
+      "purpose": [
+        "直接配布するAPKに署名する秘密鍵と証明書を保存したキーストアです。",
+        "The keystore holding the private key and certificate used to sign a directly distributed APK.",
+        "存放用于签署直接分发的 APK的私钥和证书的密钥库。"
+      ],
+      "example": [
+        "release.jks をBase64に変換した文字列",
+        "Base64-encoded contents of release.jks",
+        "release.jks 的 Base64 编码内容"
+      ]
+    },
+    "ANDROID_KEY_ALIAS": {
+      "links": "keystore",
+      "purpose": [
+        "直接配布するAPKの署名に使う鍵の名前です。キーストアの中から対象の鍵を選びます。",
+        "Selects the key within the keystore used to sign a directly distributed APK.",
+        "用于从密钥库中选择签署直接分发的 APK所用的密钥。"
+      ],
+      "example": "release"
+    },
+    "ANDROID_KEYSTORE_PASSWORD": {
+      "links": "keystore",
+      "purpose": [
+        "直接配布するAPKに使うキーストアを開くためのパスワードです。",
+        "Unlocks the keystore used to sign a directly distributed APK.",
+        "用于解锁签署直接分发的 APK所用的密钥库。"
+      ],
+      "example": "Example-Store!42"
+    },
+    "ANDROID_KEY_PASSWORD": {
+      "links": "keystore",
+      "purpose": [
+        "直接配布するAPKの署名時に、指定したエイリアスの秘密鍵を使うためのパスワードです。",
+        "Unlocks the private key under the chosen alias for signing a directly distributed APK.",
+        "用于解锁所选别名下的私钥，以签署直接分发的 APK。"
+      ],
+      "example": "Example-Key!42"
+    },
+    "PLAY_APP_SIGNING_SHA256": {
+      "links": "play-cert",
+      "purpose": [
+        "Google Playが利用者向けのアプリを署名する証明書の指紋です。APIサービスなどに配布版の署名者を登録するときに使います。",
+        "Fingerprint of the certificate Google Play uses to sign delivered apps. Use it to register the distributed app with API providers.",
+        "Google Play 为交付给用户的应用签名时所用证书的指纹，可用于向 API 服务注册发布版应用。"
+      ],
+      "example": "00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F"
+    },
+    "PLAY_SERVICE_ACCOUNT": {
+      "links": "service-account",
+      "purpose": [
+        "Google Play Developer APIを呼ぶサービスアカウントの認証情報です。CIから許可されたアプリを公開・更新するために使います。",
+        "Service account credentials for the Google Play Developer API, used by CI to publish authorized apps.",
+        "调用 Google Play Developer API 的服务账号凭据，供 CI 发布和更新获授权的应用。"
+      ],
+      "example": "{\"type\":\"service_account\",\"project_id\":\"example-release\", …}"
+    },
+    "PLAY_TRACK": {
+      "links": "play-track",
+      "purpose": [
+        "Google Playでリリースを届ける配信先です。内部テストや製品版など、対象ユーザーを決めます。",
+        "Selects the Google Play release audience, such as internal testers or production users.",
+        "指定 Google Play 发布轨道，例如内部测试或正式版，决定谁能收到更新。"
+      ],
+      "example": "internal"
+    },
+    "WINDOWS_PUBLISHER": {
+      "links": "windows-sign",
+      "purpose": [
+        "Windowsパッケージの発行者名です。パッケージのPublisherと署名証明書のSubjectを照合するときに使います。",
+        "The package publisher name. Match it to the subject of the Windows signing certificate.",
+        "Windows 包的发布者名称，用于核对包的 Publisher 与签名证书的 Subject。"
+      ],
+      "example": "CN=Example Studio"
+    },
+    "WINDOWS_SIGNING_IDENTITY": {
+      "links": "windows-sign",
+      "purpose": [
+        "署名に使う証明書の拇印またはクラウド署名プロファイルです。ビルドが使う署名者を選びます。",
+        "A certificate thumbprint or cloud signing profile that selects the signing identity for the build.",
+        "以证书指纹或云签名配置文件指定构建所用的签名身份。"
+      ],
+      "example": "0123456789ABCDEF0123456789ABCDEF01234567"
+    },
+    "WINDOWS_SIGNING_PROVIDER": {
+      "links": "windows-sign",
+      "purpose": [
+        "署名鍵を扱う方式の設定です。PFXファイル、HSM、クラウド署名のどれをビルドで使うかを指定します。",
+        "Selects how the build signs files, using a PFX, hardware security module or cloud service.",
+        "指定构建使用 PFX 文件、硬件安全模块或云服务进行签名。"
+      ],
+      "example": "PFX"
+    },
+    "MS_STORE_PRODUCT_ID": {
+      "links": "partner",
+      "purpose": [
+        "Microsoft Storeの製品を特定するIDです。提出や公開操作を対象の製品に結び付けます。",
+        "Identifies the Microsoft Store product targeted by submission and publishing operations.",
+        "标识 Microsoft Store 产品，将提交和发布操作关联到目标产品。"
+      ],
+      "example": "9NEXAMPLE123"
+    },
+    "MS_PACKAGE_IDENTITY": {
+      "links": "partner",
+      "purpose": [
+        "Partner Centerに登録されたWindowsパッケージのIDです。MSIXのマニフェストをストア製品に対応させます。",
+        "The registered package identity that ties an MSIX manifest to its Store product.",
+        "Partner Center 登记的包标识，将 MSIX 清单关联到商店产品。"
+      ],
+      "example": "ExampleStudio.ReleaseVault"
+    },
+    "GPG_KEY_ID": {
+      "links": "gpg",
+      "purpose": [
+        "配布物やリポジトリに署名するOpenPGP鍵の指紋です。署名する鍵の選択や公開鍵の照合に使います。",
+        "Fingerprint used to select the OpenPGP signing key and verify its public key.",
+        "用于选择 OpenPGP 签名密钥并核对公钥的指纹。"
+      ],
+      "example": "0123456789ABCDEF0123456789ABCDEF01234567"
+    },
+    "GPG_PRIVATE_KEY": {
+      "links": "gpg",
+      "purpose": [
+        "Linux配布物やパッケージリポジトリの署名を作るOpenPGP秘密鍵です。",
+        "The private OpenPGP key used to sign Linux artifacts or package repositories.",
+        "用于为 Linux 分发产物或软件包仓库生成签名的 OpenPGP 私钥。"
+      ],
+      "example": "-----BEGIN PGP PRIVATE KEY BLOCK----- … -----END PGP PRIVATE KEY BLOCK-----"
+    },
+    "FLATPAK_ID": {
+      "links": "flatpak",
+      "purpose": [
+        "Flatpakマニフェストでアプリを識別するIDです。Flathubへの提出や更新で同じアプリを指定します。",
+        "The application ID in the Flatpak manifest, used for Flathub submissions and updates.",
+        "Flatpak 清单中的应用 ID，提交或更新 Flathub 应用时用于指定同一应用。"
+      ],
+      "example": "com.example.releasevault"
+    },
+    "SNAPCRAFT_STORE_CREDENTIALS": {
+      "links": "snap",
+      "purpose": [
+        "Snap Storeへビルドをアップロード・公開するために書き出した認証情報です。対象Snapと操作権限を限定できます。",
+        "Exported Snap Store credentials for uploading and releasing builds, scoped to authorized snaps and operations.",
+        "导出的 Snap Store 凭据，用于上传和发布构建，可限制到指定的 Snap 与操作。"
+      ],
+      "example": [
+        "snapcraft-login.txt の内容",
+        "Contents of snapcraft-login.txt",
+        "snapcraft-login.txt 的文件内容"
+      ]
+    },
+    "TAURI_SIGNING_PRIVATE_KEY": {
+      "links": "updater-key",
+      "purpose": [
+        "Tauri更新パッケージの署名を作る秘密鍵です。配布済みアプリに組み込んだ公開鍵と対になります。",
+        "Signs Tauri updates and pairs with the public key embedded in shipped apps.",
+        "签署 Tauri 更新包的私钥，与已发布应用内置的公钥配对。"
+      ],
+      "example": [
+        "updater.key の内容",
+        "Contents of updater.key",
+        "updater.key 的文件内容"
+      ]
+    },
+    "TAURI_SIGNING_PRIVATE_KEY_PASSWORD": {
+      "links": "updater-key",
+      "purpose": [
+        "更新署名用の秘密鍵を復号するパスワードです。ビルド時に更新パッケージへ署名するために使います。",
+        "Unlocks the updater private key so the build can sign an update package.",
+        "用于解锁更新签名私钥，使构建能够签署更新包。"
+      ],
+      "example": "Example-Updater!42"
+    },
+    "TAURI_UPDATER_PUBLIC_KEY": {
+      "links": "updater-key",
+      "purpose": [
+        "アプリに組み込む更新検証用の公開鍵です。ダウンロードした更新が正しい秘密鍵で署名されたかを確認します。",
+        "Embedded in the app to verify that downloads were signed with the matching updater private key.",
+        "内置于应用，用来验证下载的更新是否由配对的更新私钥签署。"
+      ],
+      "example": [
+        "updater.key.pub の内容",
+        "Contents of updater.key.pub",
+        "updater.key.pub 的文件内容"
+      ]
+    },
+    "TAURI_UPDATER_ENDPOINT": {
+      "links": "updater-config",
+      "purpose": [
+        "アプリが更新の有無を問い合わせるURLです。更新情報を返すサーバーや静的JSONを指定します。",
+        "URL the app queries for update metadata, from an update server or a static JSON file.",
+        "应用检查更新时访问的 URL，指向更新服务或静态 JSON。"
+      ],
+      "example": "https://updates.example.com/stable/latest.json"
+    },
+    "TAURI_UPDATER_CHANNEL": {
+      "links": "updater-config",
+      "purpose": [
+        "安定版やベータ版など、更新の配信先を区別する名前です。配信側でチャネルごとの更新情報に対応させます。",
+        "Names an update stream such as stable or beta. Your release service maps it to the appropriate update feed.",
+        "区分稳定版或测试版等更新渠道的名称，由分发服务映射到对应的更新源。"
+      ],
+      "example": "stable"
+    },
+    "RELEASE_REPOSITORY": {
+      "links": "repo",
+      "purpose": [
+        "リリースで使うGitHubリポジトリの所有者名とリポジトリ名です。成果物やActions設定の対象を特定します。",
+        "The GitHub owner/repository name that identifies the destination for releases and Actions settings.",
+        "发布所用 GitHub 仓库的所有者和仓库名，用于定位发布产物与 Actions 配置。"
+      ],
+      "example": "example-studio/releasevault"
+    },
+    "PLAY_UPLOAD_KEYSTORE": {
+      "links": "keystore",
+      "purpose": [
+        "Google Playへのアップロードに署名する秘密鍵と証明書を保存したキーストアです。",
+        "The keystore holding the private key and certificate used to sign a Google Play upload.",
+        "存放用于签署上传到 Google Play 的构建的私钥和证书的密钥库。"
+      ],
+      "example": [
+        "upload.jks をBase64に変換した文字列",
+        "Base64-encoded contents of upload.jks",
+        "upload.jks 的 Base64 编码内容"
+      ]
+    },
+    "PLAY_UPLOAD_KEY_ALIAS": {
+      "links": "keystore",
+      "purpose": [
+        "Google Playへのアップロードの署名に使う鍵の名前です。キーストアの中から対象の鍵を選びます。",
+        "Selects the key within the keystore used to sign a Google Play upload.",
+        "用于从密钥库中选择签署上传到 Google Play 的构建所用的密钥。"
+      ],
+      "example": "upload"
+    },
+    "PLAY_UPLOAD_KEYSTORE_PASSWORD": {
+      "links": "keystore",
+      "purpose": [
+        "Google Playへのアップロードに使うキーストアを開くためのパスワードです。",
+        "Unlocks the keystore used to sign a Google Play upload.",
+        "用于解锁签署上传到 Google Play 的构建所用的密钥库。"
+      ],
+      "example": "Example-Store!42"
+    },
+    "PLAY_UPLOAD_KEY_PASSWORD": {
+      "links": "keystore",
+      "purpose": [
+        "Google Playへのアップロードの署名時に、指定したエイリアスの秘密鍵を使うためのパスワードです。",
+        "Unlocks the private key under the chosen alias for signing a Google Play upload.",
+        "用于解锁所选别名下的私钥，以签署上传到 Google Play 的构建。"
+      ],
+      "example": "Example-Key!42"
+    },
+    "APPLE_INSTALLER_IDENTITY": {
+      "links": "developer-id",
+      "purpose": [
+        "直接配布する.pkgに署名するDeveloper ID Installerの署名者名です。",
+        "Selects the Developer ID Installer identity for signing a directly distributed .pkg.",
+        "指定 Developer ID Installer 签名身份，用于签署直接分发的 .pkg 安装包。"
+      ],
+      "example": "Developer ID Installer: Example Studio (AB12C3D4E5)"
+    },
+    "APPLE_INSTALLER_PASSWORD": {
+      "links": "p12",
+      "purpose": [
+        "Mac Installer Distributionの.p12を書き出した際に設定したパスワードです。ビルド環境に秘密鍵を読み込むときに使います。",
+        "Unlocks the exported Mac Installer Distribution .p12 so the build machine can import the signing key.",
+        "导出 Mac Installer Distribution 的 .p12 时设置的密码，构建环境使用它导入签名私钥。"
+      ],
+      "example": "Example-Export!42"
+    },
+    "APPLE_APP_ID": {
+      "links": "apple-app-id",
+      "purpose": [
+        "App IDは、Appleが「どの開発チームの、どのアプリか」を識別するための値です。アプリに署名するとき、プロビジョニングプロファイルがそのアプリに使えるかを確認するために使います。\n\nApple Developerの「Identifiers」で対象アプリを開きます。ReleaseVaultでは、Team IDとBundle IDを保存すると、両方を半角のピリオド（.）でつないで自動入力します。対象アプリの「App ID Prefix」がTeam IDと異なる場合は、「編集」でPrefixを修正してください。\n\nたとえば、Prefixが「AB12C3D4E5」、Bundle IDが「com.example.releasevault」の場合、入力する値は次のとおりです。\nAB12C3D4E5.com.example.releasevault",
+        "The App ID identifies an app and its development team. During signing, it helps determine whether a provisioning profile can be used for that app.\n\nOpen the app under Identifiers in Apple Developer. ReleaseVault automatically joins the saved Team ID and Bundle ID with a period (.). If Apple shows a different App ID Prefix, choose Edit value and enter that prefix.\n\nFor example, if the prefix is AB12C3D4E5 and the Bundle ID is com.example.releasevault, enter the following value.\nAB12C3D4E5.com.example.releasevault",
+        "App ID 用于识别应用及其所属的开发团队。为应用签名时，它用于确认所选描述文件是否适用于该应用。\n\n在 Apple Developer 的“Identifiers”中打开目标应用。保存 Team ID 和 Bundle ID 后，ReleaseVault 会用英文句点（.）将两者连接并自动填入。如果应用详情中的 App ID Prefix 与 Team ID 不同，请点击“编辑”并修改前缀。\n\n例如，前缀为 AB12C3D4E5、Bundle ID 为 com.example.releasevault 时，请输入以下值。\nAB12C3D4E5.com.example.releasevault"
+      ],
+      "example": [
+        "AB12C3D4E5 と com.example.releasevault → AB12C3D4E5.com.example.releasevault",
+        "AB12C3D4E5 and com.example.releasevault → AB12C3D4E5.com.example.releasevault",
+        "AB12C3D4E5 与 com.example.releasevault → AB12C3D4E5.com.example.releasevault"
+      ]
+    },
+    "PLAY_UPLOAD_SHA256": {
+      "links": "play-cert",
+      "purpose": [
+        "Play Consoleがアップロード元を確認する証明書の指紋です。手元のアップロード鍵と照合します。",
+        "Fingerprint of the upload certificate registered in Play Console. Compare it with your local upload key.",
+        "Play Console 登记的上传证书指纹，用于核对本地上传密钥。"
+      ],
+      "example": "00:01:02:03:04:05:06:07:08:09:0A:0B:0C:0D:0E:0F:10:11:12:13:14:15:16:17:18:19:1A:1B:1C:1D:1E:1F"
+    },
+    "GOOGLE_CLOUD_PROJECT": {
+      "links": "cloud-project",
+      "purpose": [
+        "Play Developer APIやサービスアカウントを管理するGoogle CloudプロジェクトのIDです。",
+        "Identifies the Google Cloud project managing the Play Developer API and its service account.",
+        "标识管理 Play Developer API 和服务账号的 Google Cloud 项目。"
+      ],
+      "example": "example-release"
+    },
+    "ANDROID_VERSION_CODE": {
+      "links": "version-code",
+      "purpose": [
+        "Androidがビルドの新旧を判定する整数です。Google Playへ新しい版を提出するときに増やします。",
+        "The integer Android uses to order builds. Increment it for a new Play release.",
+        "Android 用于比较构建先后的整数，向 Google Play 提交新版时需递增。"
+      ],
+      "example": "42"
+    },
+    "WINDOWS_PFX": {
+      "links": "pfx",
+      "purpose": [
+        "Windowsのコード署名証明書と秘密鍵を格納したファイルです。ビルド環境でEXEなどの署名に使います。",
+        "A file containing the Windows code-signing certificate and private key for signing executables.",
+        "包含 Windows 代码签名证书和私钥的文件，构建时用于签署可执行文件。"
+      ],
+      "example": [
+        "Signing.pfx をBase64に変換した文字列",
+        "Base64-encoded contents of Signing.pfx",
+        "Signing.pfx 的 Base64 编码内容"
+      ]
+    },
+    "WINDOWS_PFX_PASSWORD": {
+      "links": "pfx",
+      "purpose": [
+        "署名用PFXを書き出す際に設定したパスワードです。ビルド時の証明書の取り込みに使います。",
+        "The password set when exporting the PFX. The build uses it to import the signing certificate.",
+        "导出 PFX 时设置的密码，构建时用于导入签名证书。"
+      ],
+      "example": "Example-Export!42"
+    },
+    "AZURE_TENANT_ID": {
+      "links": "azure-app",
+      "purpose": [
+        "署名サービスの認証を行うMicrosoft EntraディレクトリのIDです。認証先の組織を指定します。",
+        "Identifies the Microsoft Entra directory used to authenticate to the signing service.",
+        "标识签名服务认证所用的 Microsoft Entra 目录，指定认证所属组织。"
+      ],
+      "example": "01234567-89ab-4cde-8012-3456789abcde"
+    },
+    "AZURE_CLIENT_ID": {
+      "links": "azure-app",
+      "purpose": [
+        "Microsoft Entraに登録したアプリのIDです。CIが署名サービスへ接続する際のアプリを識別します。",
+        "The ID of the Entra application that CI uses to authenticate to the signing service.",
+        "标识 CI 连接签名服务时使用的 Microsoft Entra 应用。"
+      ],
+      "example": "abcdef01-2345-4678-9abc-def012345678"
+    },
+    "AZURE_SIGNING_ENDPOINT": {
+      "links": "azure-sign",
+      "purpose": [
+        "Artifact Signingに署名リクエストを送るURLです。署名アカウントを作成したリージョンに合わせます。",
+        "Regional URL for sending requests to your Artifact Signing account.",
+        "发送 Artifact Signing 签名请求的区域 URL，应与签名账户所在区域一致。"
+      ],
+      "example": "https://eus.codesigning.azure.net/"
+    },
+    "TAURI_UPDATER_VERSION": {
+      "links": "version",
+      "purpose": [
+        "更新として配布するアプリのバージョンです。更新マニフェストの版と署名対象の成果物を対応させます。",
+        "The app version being shipped. It connects the update manifest to the signed artifact.",
+        "要发布的应用版本，用于将更新清单的版本与签名产物对应。"
+      ],
+      "example": "1.2.3"
+    },
+    "TAURI_UPDATER_PLATFORM": {
+      "links": "updater-json",
+      "purpose": [
+        "更新対象のOSとCPUの組み合わせです。対応する端末に正しい成果物を配信します。",
+        "The target OS and CPU combination used to select the correct update artifact.",
+        "标识目标操作系统和 CPU 架构，用于选择正确的更新产物。"
+      ],
+      "example": "darwin-aarch64"
+    },
+    "TAURI_UPDATER_ARTIFACT": {
+      "links": "updater-json",
+      "purpose": [
+        "ダウンロードする更新パッケージのURLです。更新情報を確認したアプリがこのURLから本体を取得します。",
+        "The download URL of the update package selected by the app from the update metadata.",
+        "更新包的下载 URL，应用读取更新信息后从此处取得更新文件。"
+      ],
+      "example": "https://updates.example.com/1.2.3/ReleaseVault.app.tar.gz"
+    },
+    "TAURI_UPDATER_SIGNATURE": {
+      "links": "updater-json",
+      "purpose": [
+        "更新成果物に対応する署名です。アプリは公開鍵を使い、取得したファイルの出所と完全性を確認します。",
+        "The signature paired with an update artifact, verified with the public key to check origin and integrity.",
+        "与更新产物配对的签名，应用通过公钥核验来源与完整性。"
+      ],
+      "example": [
+        "ReleaseVault.app.tar.gz.sig の内容",
+        "Contents of ReleaseVault.app.tar.gz.sig",
+        "ReleaseVault.app.tar.gz.sig 的文件内容"
+      ]
+    },
+    "TAURI_UPDATE_MANIFEST": {
+      "links": "updater-json",
+      "purpose": [
+        "バージョン、配布先ごとのURL、署名をまとめた更新情報です。アプリはこれを読み、適切な更新を選びます。",
+        "Update metadata listing the version, download URLs and signatures so the app can select a compatible release.",
+        "汇总版本、各平台下载 URL 和签名的更新信息，供应用选择兼容版本。"
+      ],
+      "example": "{\"version\":\"1.2.3\",\"platforms\":{\"darwin-aarch64\":{…}}}"
+    },
+    "APPLE_ACCOUNT_PASSWORD": {
+      "links": "account-password",
+      "purpose": [
+        "Apple IDのメールアドレスと組み合わせて、Apple Accountにサインインするためのパスワードです。この保管庫に暗号化して保存します。",
+        "The password you use with your Apple ID email address to sign in to your Apple Account. It is stored encrypted in this vault.",
+        "与 Apple ID 邮箱配合使用的 Apple 账户登录密码，加密保存在此保险库中。"
+      ],
+      "example": "Example-Only!42"
+    }
+  }
+}
