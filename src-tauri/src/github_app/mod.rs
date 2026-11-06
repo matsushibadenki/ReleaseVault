@@ -37,6 +37,14 @@ impl Level {
 pub struct Grants {
     #[serde(default)]
     pub secrets: Level,
+    #[serde(default)]
+    pub actions: Level,
+    #[serde(default)]
+    pub contents: Level,
+    #[serde(default)]
+    pub workflows: Level,
+    #[serde(default)]
+    pub pull_requests: Level,
     #[serde(default, alias = "actions_variables")]
     pub variables: Level,
     #[serde(default)]
@@ -46,6 +54,10 @@ impl Grants {
     fn intersect(&self, other: &Self) -> Self {
         Self {
             secrets: self.secrets.min(other.secrets),
+            actions: self.actions.min(other.actions),
+            contents: self.contents.min(other.contents),
+            workflows: self.workflows.min(other.workflows),
+            pull_requests: self.pull_requests.min(other.pull_requests),
             variables: self.variables.min(other.variables),
             environments: self.environments.min(other.environments),
         }
@@ -53,13 +65,21 @@ impl Grants {
     fn allows(&self, p: &str, need: Level) -> bool {
         (match p {
             "secrets" => self.secrets,
+            "actions" => self.actions,
+            "contents" => self.contents,
+            "workflows" => self.workflows,
+            "pull_requests" => self.pull_requests,
             "actions_variables" => self.variables,
             "environments" => self.environments,
             _ => Level::None,
         }) >= need
     }
     fn supported(&self, limit: &Self) -> bool {
-        self.secrets <= limit.secrets
+        self.contents <= limit.contents
+            && self.workflows <= limit.workflows
+            && self.pull_requests <= limit.pull_requests
+            && self.actions <= limit.actions
+            && self.secrets <= limit.secrets
             && self.variables <= limit.variables
             && self.environments <= limit.environments
     }
@@ -442,4 +462,84 @@ fn poll_with(api: &Api, d: &Document, s: &Scope, k: &str, key: &Key, b: &Binding
     let timestamp = data["updated_at"].as_str().ok_or("app-api")?;
     chrono::DateTime::parse_from_rfc3339(timestamp).map_err(|_| "app-api")?;
     Ok(timestamp.into())
+}
+
+pub fn runs(c: &Connection, repo: &str, id: u64, key: &Key) -> R<crate::actions::Report> {
+    runs_with(&Api::github(), c, repo, id, key)
+}
+fn runs_with(
+    api: &Api,
+    c: &Connection,
+    repo: &str,
+    id: u64,
+    key: &Key,
+) -> R<crate::actions::Report> {
+    validate_repo(repo)?;
+    c.permission(id, repo, "actions", Level::Read)?;
+    let pem = vault::unseal(key, &c.pem)?;
+    let signed = jwt(c.app, &pem)?;
+    let token = api.token(&signed, c.installation, Some(id), "actions", "read")?;
+    let result = api
+        .request(
+            "GET",
+            &format!("/repos/{repo}/actions/runs?per_page=20"),
+            &token,
+            None,
+        )?
+        .success()?;
+    crate::actions::parse(repo, result)
+}
+
+pub struct WorkflowClient {
+    api: Api,
+    token: zeroize::Zeroizing<String>,
+}
+impl crate::workflow_pr::Transport for WorkflowClient {
+    fn request(&mut self, method: &str, path: &str, body: Option<Value>) -> R<(u16, Value)> {
+        let reply = self.api.request(method, path, &self.token, body)?;
+        Ok((reply.status, reply.data))
+    }
+}
+pub fn workflow_client(
+    c: &Connection,
+    repo: &str,
+    id: u64,
+    key: &Key,
+    write: bool,
+) -> R<WorkflowClient> {
+    workflow_client_with(Api::github(), c, repo, id, key, write)
+}
+fn workflow_client_with(
+    api: Api,
+    c: &Connection,
+    repo: &str,
+    id: u64,
+    key: &Key,
+    write: bool,
+) -> R<WorkflowClient> {
+    validate_repo(repo)?;
+    let level = if write { Level::Write } else { Level::Read };
+    c.permission(id, repo, "contents", level)?;
+    let mut permissions = json!({"contents":level.wire()});
+    if write {
+        c.permission(id, repo, "workflows", Level::Write)?;
+        c.permission(id, repo, "pull_requests", Level::Write)?;
+        permissions["workflows"] = json!("write");
+        permissions["pull_requests"] = json!("write");
+    }
+    let pem = vault::unseal(key, &c.pem)?;
+    let signed = jwt(c.app, &pem)?;
+    let mut data = api
+        .request(
+            "POST",
+            &format!("/app/installations/{}/access_tokens", c.installation),
+            &signed,
+            Some(json!({"repository_ids":[id],"permissions":permissions})),
+        )?
+        .success()?;
+    let token = match data["token"].take() {
+        Value::String(token) if !token.is_empty() => zeroize::Zeroizing::new(token),
+        _ => return Err("app-api".into()),
+    };
+    Ok(WorkflowClient { api, token })
 }

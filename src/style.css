@@ -865,3 +865,62 @@ dialog p {
 .example-field {display: grid; gap: 5px; min-width: 0;}
 .example-field label {font-size: 12px; font-weight: 600;}
 .example-field small {font-size: 11px; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere;}
+
+.actions-report {display:grid; gap:10px; min-width:0;}
+.actions-report > label {font-size:12px; font-weight:600;}
+.actions-report > small, .run-list small {font-size:11px; color:var(--muted); overflow-wrap:anywhere;}
+.run-list article {padding:10px 0; border-top:1px solid var(--line); display:grid; gap:4px; min-width:0;}
+.run-list article > div {display:flex; align-items:center; gap:8px;}
+.run-list strong {flex:1; font-size:12px; overflow-wrap:anywhere; min-width:0;}
+.run-success {background:#ddf0e5; color:#236447;}
+.run-failure, .run-timed_out {background:#fae1df; color:#8d332b;}
+.run-in_progress, .run-queued, .run-waiting {background:#fff0d0; color:#7a5915;}
+.run-note {display:flex; gap:6px; line-height:1.5;}
+.run-note svg {flex-shrink:0;}
+
+.release-context {display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px;}
+.release-platform {display:grid; gap:5px; border-top:1px solid var(--line); padding:8px 0; min-width:0;}
+.release-platform > div {display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.release-platform small {color:var(--muted); font-size:11px; overflow-wrap:anywhere;}
+
+.release-platform .remote-success {color:#236447;}
+.release-platform .remote-failure {color:#8d332b;}
+
+.workflow-preview {display:grid;gap:8px;min-width:0;}
+.workflow-preview small, .workflow-path {font-size:11px;overflow-wrap:anywhere;}
+.workflow-preview pre {max-height:38dvh;overflow:auto;margin:0;padding:10px;border:1px solid var(--line);border-radius:6px;font-size:10px;background:#f4f7f5;}
+.workflow-preview pre span {display:inline;}
+.diff-added {background:#dcefe3;color:#235536;}
+.diff-removed {background:#f8e0dd;color:#813b31;}
+.review-consent {display:flex;align-items:flex-start;gap:7px;font-size:12px;line-height:1.5;}
+.review-consent input {flex:none;margin-top:3px;}
+
+.apple-resources {display:grid;gap:10px;min-width:0;}
+.apple-resources label {display:grid;gap:5px;font-size:12px;font-weight:600;min-width:0;}
+.apple-resources select {max-width:100%;min-width:0;}
+.apple-resources small {font-size:11px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere;}
+.apple-resource-meta {display:grid;gap:4px;font-size:12px;}
+.apple-resource-meta code {font-size:11px;overflow-wrap:anywhere;}
+.badge.invalid {background:#f8e0dd;color:#813b31;}
+
+.expiry-overview {display:flex;flex-direction:column;flex:1;min-height:0;padding:0 16px 16px;gap:10px;}
+.expiry-filters {display:flex;flex-wrap:wrap;gap:8px;}
+.expiry-filters .input-icon {flex:1 1 190px;}
+.expiry-filters select {max-width:100%;min-width:0;flex:1 1 145px;font-size:12px;}
+.expiry-tabs {display:flex;flex-wrap:wrap;gap:5px;}
+.expiry-tabs button {font-size:11px;min-height:28px;gap:5px;padding:4px 8px;}
+.expiry-tabs button[aria-pressed=true] {background:#d9eee7;color:#245747;border-color:#94baa8;}
+.expiry-context {display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);}
+.expiry-list {overflow:auto;min-height:0;display:flex;flex-direction:column;gap:7px;}
+.expiry-item {display:grid;text-align:start;gap:5px;padding:10px 12px;flex:none;width:100%;min-width:0;}
+.expiry-title {display:flex;align-items:center;gap:8px;min-width:0;}
+.expiry-title strong {flex:1;font-size:12px;min-width:0;overflow-wrap:anywhere;}
+.expiry-title > svg {flex-shrink:0;}
+.expiry-item > code,.expiry-item small {font-size:11px;color:var(--muted);overflow-wrap:anywhere;}
+.expiry-date {display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;font-size:12px;}
+.expiry-date span {font-size:11px;color:var(--muted);}
+.expiry-shared {display:flex;align-items:flex-start;gap:4px;}
+.expiry-shared svg {flex:none;}
+.expiry-invalid,.expiry-expired {background:#f8e0dd;color:#813b31;}
+.expiry-soon {background:#fff0d0;color:#7a5915;}
+.expiry-unchecked,.expiry-unknown {background:#e8edf5;color:#455c7a;}

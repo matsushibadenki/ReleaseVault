@@ -19,6 +19,7 @@ function App() {
   const [snap, setSnap] = useState<Snapshot>(),
     [note, notice] = useState(""),
     [busy, setBusy] = useState(false),
+    [checkingRemote, setCheckingRemote] = useState(false),
     [modal, show] = useState(""),
     [revealed, reveal] = useState("");
   const active = useRef(false),
@@ -116,7 +117,8 @@ function App() {
       ? snap.rows.find((x) => x.def.key === snap.selected) || snap.rows[0]
       : undefined;
   const action = (op: string, data: FormValues = {}) => {
-    if (!snap || snap.locked) return;
+    if (!snap || snap.locked || active.current) return;
+    if (op === "release-check" || op === "apple-fetch") setCheckingRemote(true);
     run(
       () =>
         invoke("perform", {
@@ -125,14 +127,32 @@ function App() {
           input: { key: row?.def.key || "", ...data },
         }),
       (v) => {
-        if (op === "app-refresh" || op === "app-permission")
+        if (op === "apple-fetch" || op === "apple-apply") show("apple");
+        else if (
+          op === "workflow-preview" ||
+          op === "workflow-create" ||
+          op === "workflow-open"
+        )
+          show("workflow-review");
+        else if (
+          op === "release-add" ||
+          op === "release-remove" ||
+          op === "release-export" ||
+          op === "release-check"
+        )
+          show("release");
+        else if (op === "app-refresh" || op === "app-permission")
           show("app-permission");
-        else if (op !== "app-settings") show("");
+        else if (op !== "app-settings" && !op.startsWith("actions-")) show("");
         if (op === "reveal") {
           reveal(String(v));
           clearTimeout(secretTimer.current);
           secretTimer.current = setTimeout(() => reveal(""), 15000);
         } else if (
+          op !== "apple-fetch" &&
+          !op.startsWith("workflow-") &&
+          !op.startsWith("release-") &&
+          !op.startsWith("actions-") &&
           op !== "source" &&
           op !== "acquire" &&
           op !== "app-settings"
@@ -154,7 +174,10 @@ function App() {
           );
         }
       },
-    );
+    ).finally(() => {
+      if (op === "release-check" || op === "apple-fetch")
+        setCheckingRemote(false);
+    });
   };
   const lock = () =>
     run(
@@ -224,6 +247,24 @@ function App() {
           <Dialog
             key={modal + identity}
             {...{ modal, row, snap, t, busy, show, action }}
+            lockDownload={
+              checkingRemote
+                ? () => {
+                    invoke("lock")
+                      .then(refresh)
+                      .catch((e) => notice(errorText(String(e), t)));
+                  }
+                : undefined
+            }
+            cancelDownload={
+              checkingRemote
+                ? () => {
+                    invoke("cancel_remote_check").catch((e) =>
+                      notice(errorText(String(e), t)),
+                    );
+                  }
+                : undefined
+            }
             message={note}
             close={() => {
               show("");
@@ -231,7 +272,11 @@ function App() {
             }}
             submit={(data) =>
               action(
-                modal === "choose-import" ? String(data.encoding) : modal,
+                modal === "choose-import"
+                  ? String(data.encoding)
+                  : modal === "workflow-review"
+                    ? "workflow-create"
+                    : modal,
                 data,
               )
             }

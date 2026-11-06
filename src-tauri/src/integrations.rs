@@ -76,23 +76,25 @@ pub fn verify_artifact(
     sig: &[u8],
     key: &Key,
 ) -> R<Option<String>> {
-    let pk = B64
-        .decode(value(d, s, PUBLIC, key)?.trim_ascii())
-        .map_err(|_| "format")?;
+    let public = value(d, s, PUBLIC, key)?;
+    verify_reader(&public, sig, std::fs::File::open(path).map_err(|_| "file")?)
+}
+
+pub(crate) fn verify_reader(public: &[u8], sig: &[u8], mut reader: impl Read) -> R<Option<String>> {
+    let pk = B64.decode(public.trim_ascii()).map_err(|_| "format")?;
     let sig = B64.decode(sig.trim_ascii()).map_err(|_| "format")?;
     let pk = minisign_verify::PublicKey::decode(std::str::from_utf8(&pk).map_err(|_| "format")?)
         .map_err(|_| "format")?;
     let sig = minisign_verify::Signature::decode(std::str::from_utf8(&sig).map_err(|_| "format")?)
         .map_err(|_| "format")?;
     let mut verifier = pk.verify_stream(&sig).map_err(|_| "mismatch")?;
-    let mut f = std::fs::File::open(path).map_err(|_| "file")?;
     let mut buf = [0; 65536];
     loop {
-        let n = f.read(&mut buf).map_err(|_| "file")?;
+        let n = reader.read(&mut buf).map_err(|_| "download")?;
         if n == 0 {
             break;
         }
-        verifier.update(&buf[..n])
+        verifier.update(&buf[..n]);
     }
     verifier.finalize().map_err(|_| "mismatch")?;
     Ok(sig
@@ -359,4 +361,107 @@ fn cli_timestamp(d: &Document, s: &Scope, k: &str, binding: &Binding) -> R<Strin
         chrono::DateTime::parse_from_rfc3339(remote).map_err(|_| "gh")?;
     }
     Ok(remote.into())
+}
+
+pub fn workflow_runs(repo: &str) -> R<crate::actions::Report> {
+    dest(repo, "")?;
+    let mut output = tempfile::tempfile().map_err(|_| "file")?;
+    let mut command = gh();
+    command.args([
+        "api",
+        "--hostname",
+        "github.com",
+        &format!("repos/{repo}/actions/runs?per_page=20"),
+    ]);
+    let mut child = command
+        .stdin(Stdio::null())
+        .stdout(output.try_clone().map_err(|_| "file")?)
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|_| "gh")?;
+    if !wait(&mut child)? {
+        return Err("gh".into());
+    }
+    use std::io::{Seek, SeekFrom};
+    output.seek(SeekFrom::Start(0)).map_err(|_| "file")?;
+    let mut bytes = Vec::new();
+    output
+        .take(4 * 1024 * 1024 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "file")?;
+    if bytes.len() > 4 * 1024 * 1024 {
+        return Err("size".into());
+    }
+    crate::actions::parse(repo, serde_json::from_slice(&bytes).map_err(|_| "app-api")?)
+}
+
+pub struct CliWorkflowClient;
+impl crate::workflow_pr::Transport for CliWorkflowClient {
+    fn request(
+        &mut self,
+        method: &str,
+        path: &str,
+        body: Option<serde_json::Value>,
+    ) -> R<(u16, serde_json::Value)> {
+        workflow_cli_with(gh(), method, path, body)
+    }
+}
+pub(super) fn workflow_cli_with(
+    mut cmd: Command,
+    method: &str,
+    path: &str,
+    body: Option<serde_json::Value>,
+) -> R<(u16, serde_json::Value)> {
+    cmd.args([
+        "api",
+        "--hostname",
+        "github.com",
+        "--include",
+        "--method",
+        method,
+        path,
+    ]);
+    let mut input = None;
+    if let Some(body) = body {
+        let mut file = tempfile::NamedTempFile::new().map_err(|_| "file")?;
+        serde_json::to_writer(file.as_file_mut(), &body).map_err(|_| "file")?;
+        cmd.arg("--input").arg(file.path());
+        input = Some(file);
+    }
+    let mut output = tempfile::tempfile().map_err(|_| "file")?;
+    let mut child = cmd
+        .stdin(Stdio::null())
+        .stdout(output.try_clone().map_err(|_| "file")?)
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|_| "gh")?;
+    let _success = wait(&mut child)?;
+    drop(input);
+    use std::io::{Seek, SeekFrom};
+    output.seek(SeekFrom::Start(0)).map_err(|_| "file")?;
+    let mut bytes = Vec::new();
+    output
+        .take(2 * 1024 * 1024 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "file")?;
+    if bytes.len() > 2 * 1024 * 1024 {
+        return Err("workflow-file".into());
+    }
+    let text = std::str::from_utf8(&bytes).map_err(|_| "workflow-network")?;
+    let (headers, body) = text
+        .split_once("\r\n\r\n")
+        .or_else(|| text.split_once("\n\n"))
+        .ok_or("workflow-network")?;
+    let status = headers
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .and_then(|status| status.parse().ok())
+        .ok_or("workflow-network")?;
+    let data = if body.trim().is_empty() {
+        serde_json::Value::Null
+    } else {
+        serde_json::from_str(body).map_err(|_| "workflow-network")?
+    };
+    Ok((status, data))
 }

@@ -76,6 +76,10 @@ fn setup() -> (Document, Scope, Key, Vec<u8>) {
             organization: true,
             limits: Grants {
                 secrets: Level::Write,
+                actions: Level::Read,
+                contents: Level::Write,
+                workflows: Level::Write,
+                pull_requests: Level::Write,
                 variables: Level::Write,
                 environments: Level::Write,
             },
@@ -308,4 +312,103 @@ fn read_only_repository_can_bind_without_sending() {
     );
     assert!(d.local_entry(&s, k).unwrap().synced.is_empty());
     assert!(!serde_json::to_string(&d).unwrap().contains("remote-only"));
+}
+
+#[test]
+fn workflow_runs_require_explicit_read_grant_and_scope_token() {
+    let (mut d, s, key, _) = setup();
+    let c = d.github_apps.get_mut(&s.project).unwrap();
+    // A denied request must fail before network access or token minting.
+    let offline = Api::fixture("http://127.0.0.1:1");
+    assert!(runs_with(&offline, c, "studio/mobile", 17, &key).is_err());
+    c.configure(
+        17,
+        Grants {
+            actions: Level::Read,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(runs_with(&offline, c, "studio/other", 17, &key).is_err());
+    let (api, log) = server(vec![
+        token(),
+        (
+            200,
+            json!({"workflow_runs":[{
+                "id": 123, "name":"Build", "repository":{"full_name":"studio/mobile"},
+                "status":"completed","conclusion":"failure","head_sha":"abc123",
+                "head_branch":"main","event":"workflow_dispatch","updated_at":"2026-11-06T00:00:00Z","run_attempt":2
+            }]}),
+        ),
+    ]);
+    let report = runs_with(&api, c, "studio/mobile", 17, &key).unwrap();
+    assert_eq!(report.repo, "studio/mobile");
+    assert_eq!(report.runs[0].conclusion.as_deref(), Some("failure"));
+    assert_eq!(report.runs[0].attempt, 2);
+    let requests = log.join().unwrap();
+    assert_eq!(
+        requests[0].body,
+        json!({"permissions":{"actions":"read"},"repository_ids":[17]})
+    );
+    assert!(requests[1]
+        .route
+        .eq("GET /repos/studio/mobile/actions/runs?per_page=20"));
+    assert!(
+        crate::actions::parse("studio/mobile", json!({"workflow_runs":[]}))
+            .unwrap()
+            .runs
+            .is_empty()
+    );
+    assert!(crate::actions::parse(
+        "studio/mobile",
+        json!({"workflow_runs":[{"id":123,"repository":{"full_name":"attacker/other"}}]})
+    )
+    .is_err());
+}
+
+#[test]
+fn workflow_tokens_separate_preview_read_access_from_pr_write_access() {
+    let (mut d, s, key, _) = setup();
+    let c = d.github_apps.get_mut(&s.project).unwrap();
+    let offline = Api::fixture("http://127.0.0.1:1");
+    assert!(workflow_client_with(offline, c, "studio/mobile", 17, &key, false).is_err());
+    c.configure(
+        17,
+        Grants {
+            contents: Level::Read,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (api, requests) = server(vec![token()]);
+    workflow_client_with(api, c, "studio/mobile", 17, &key, false).unwrap();
+    assert_eq!(
+        requests.join().unwrap()[0].body,
+        json!({"repository_ids":[17],"permissions":{"contents":"read"}})
+    );
+    assert!(workflow_client_with(
+        Api::fixture("http://127.0.0.1:1"),
+        c,
+        "studio/mobile",
+        17,
+        &key,
+        true
+    )
+    .is_err());
+    c.configure(
+        17,
+        Grants {
+            contents: Level::Write,
+            workflows: Level::Write,
+            pull_requests: Level::Write,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (api, requests) = server(vec![token()]);
+    workflow_client_with(api, c, "studio/mobile", 17, &key, true).unwrap();
+    assert_eq!(
+        requests.join().unwrap()[0].body,
+        json!({"repository_ids":[17],"permissions":{"contents":"write","workflows":"write","pull_requests":"write"}})
+    );
 }

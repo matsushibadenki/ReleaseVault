@@ -188,6 +188,31 @@ export function Inspector(p: WorkProps & { row: Row; back?: () => void }) {
             {t("有効期限", "Expires", "到期")} · {r.expires}
           </small>
         )}
+        {r.appleCheck && (
+          <small>
+            {t(
+              "Apple APIで照合",
+              "Matched via Apple API",
+              "已通过 Apple API 匹配",
+            )}{" "}
+            · {r.appleCheck.name} ·{" "}
+            {new Date(r.appleCheck.checked).toLocaleString(
+              document.documentElement.lang,
+            )}
+            {r.appleCheck.kind === "profiles" &&
+              r.appleCheck.state !== "ACTIVE" && (
+                <>
+                  {" "}
+                  ·{" "}
+                  {t(
+                    "無効・要確認",
+                    "Invalid / review required",
+                    "无效／需要检查",
+                  )}
+                </>
+              )}
+          </small>
+        )}
         {r.present && !linked && d.guide !== "apple-account" && (
           <button
             className="link cert"
@@ -359,6 +384,10 @@ export function Inspector(p: WorkProps & { row: Row; back?: () => void }) {
       {d.group === "Tauri" && (
         <section>
           <h3>Tauri Updater</h3>
+          <button onClick={() => show("release")}>
+            <Package size={14} />
+            {t("更新JSONまとめ", "Combined update JSON", "更新 JSON 汇总")}
+          </button>
           <div className="stack">
             <button onClick={() => show("generate")}>
               <KeyRound size={14} />
@@ -372,7 +401,7 @@ export function Inspector(p: WorkProps & { row: Row; back?: () => void }) {
               <Package size={14} />
               {t("更新JSONを生成", "Create update manifest", "生成更新清单")}
             </button>
-            <button onClick={() => action("workflow")}>
+            <button onClick={() => show("workflow")}>
               <Download size={14} />
               {t(
                 "ビルド用Actionsを書き出す",

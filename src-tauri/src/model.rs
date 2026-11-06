@@ -40,6 +40,8 @@ pub struct Entry {
     pub matched_fingerprint: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub app_password_label: String,
+    #[serde(default)]
+    pub apple_check: Option<crate::apple_api::Evidence>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub app_id_prefix: Option<crate::apple_ids::AppIdPrefix>,
     #[serde(default)]
@@ -60,6 +62,14 @@ pub struct Event {
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Document {
+    #[serde(default)]
+    pub apple_reports: BTreeMap<String, crate::apple_api::Report>,
+    #[serde(default)]
+    pub workflow_previews: BTreeMap<String, crate::workflow_pr::Preview>,
+    #[serde(default)]
+    pub release_drafts: BTreeMap<String, crate::publishing::ReleaseDraft>,
+    #[serde(default)]
+    pub action_reports: BTreeMap<u64, crate::actions::Report>,
     #[serde(default)]
     pub github_apps: BTreeMap<u64, crate::github_app::Connection>,
     pub projects: Vec<Project>,
@@ -91,6 +101,10 @@ impl Document {
                 custom: vec![],
             }],
             github_apps: BTreeMap::new(),
+            action_reports: BTreeMap::new(),
+            release_drafts: BTreeMap::new(),
+            workflow_previews: BTreeMap::new(),
+            apple_reports: BTreeMap::new(),
             entries: BTreeMap::new(),
             audit: vec![],
         }

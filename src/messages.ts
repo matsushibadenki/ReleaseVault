@@ -1,6 +1,120 @@
 import type { T } from "./types";
 export function errorText(code: string, t: T) {
   switch (code) {
+    case "apple-config":
+      return t(
+        "同じプロジェクト・環境にApp Store ConnectのIssuer ID、Key ID、APIキー（.p8）を保存してください。",
+        "Save the App Store Connect Issuer ID, Key ID and API key (.p8) in this project and environment.",
+        "请在本项目和环境中保存 App Store Connect 的 Issuer ID、Key ID 和 API 密钥（.p8）。",
+      );
+    case "apple-key":
+      return t(
+        "App Store ConnectのP-256秘密鍵（.p8）を確認してください。",
+        "Check the App Store Connect P-256 private key (.p8).",
+        "请检查 App Store Connect 的 P-256 私钥（.p8）。",
+      );
+    case "apple-auth":
+      return t(
+        "AppleのAPIキーとIssuer ID・Key ID、有効状態、Macの時刻を確認してください。",
+        "Check the API credentials, their validity and your Mac’s clock.",
+        "请检查 API 凭据、有效状态及 Mac 的时间。",
+      );
+    case "apple-denied":
+      return t(
+        "このAPIキーには証明書・プロファイルを参照する権限がありません。",
+        "This API key cannot read certificates or profiles.",
+        "此 API 密钥无权读取证书或描述文件。",
+      );
+    case "apple-rate":
+      return t(
+        "Appleの取得回数制限に達しました。時間をおいて再試行してください。",
+        "Apple rate limit reached. Try again later.",
+        "已达到 Apple 请求限制，请稍后重试。",
+      );
+    case "apple-network":
+      return t(
+        "Appleから取得できませんでした。前回の取得結果を確認してください。",
+        "Could not fetch from Apple. Previous results are retained.",
+        "无法从 Apple 获取数据，已保留上次结果。",
+      );
+    case "apple-response":
+      return t(
+        "Appleの応答を確認できませんでした。期限は反映されていません。",
+        "Could not validate Apple’s response. Expiry dates were not applied.",
+        "无法验证 Apple 的响应，未更新到期日期。",
+      );
+    case "apple-limit":
+      return t(
+        "取得件数または時間が上限に達しました。期限は反映されていません。",
+        "The fetch limit was reached. Expiry dates were not applied.",
+        "获取数量或时间达到上限，未更新到期日期。",
+      );
+    case "apple-stale":
+      return t(
+        "APIキーまたは取得結果が変更されています。再取得してください。",
+        "API credentials or results changed. Fetch them again.",
+        "API 凭据或结果已更改，请重新获取。",
+      );
+    case "apple-file":
+      return t(
+        "保存ファイルと.p12の書き出し用パスワードを確認してください。",
+        "Check the saved file and its .p12 export password.",
+        "请检查保存的文件和 .p12 导出密码。",
+      );
+    case "apple-mismatch":
+      return t(
+        "選択したAppleの項目と保存ファイルが一致しません。別の項目を選択してください。",
+        "The Apple resource does not match the saved file. Choose the matching resource.",
+        "所选 Apple 项目与保存文件不匹配，请选择对应项目。",
+      );
+    case "workflow-stale":
+      return t(
+        "対象のブランチや接続が変更されています。差分を取り直してください。",
+        "The branch or connection changed. Fetch a new preview.",
+        "分支或连接已更改，请重新获取预览。",
+      );
+    case "workflow-file":
+      return t(
+        "既存のワークフローを読み取れません。UTF-8の通常ファイル（256 KiB以下）を確認してください。",
+        "Check that the workflow is a UTF-8 file no larger than 256 KiB.",
+        "请确认工作流是 256 KiB 以下的 UTF-8 普通文件。",
+      );
+    case "workflow-identical":
+      return t(
+        "既存ファイルと同じ内容です。",
+        "The existing file already matches.",
+        "内容与现有文件一致。",
+      );
+    case "workflow-denied":
+      return t(
+        "GitHubのContents・Workflows・Pull requests権限を確認してください。",
+        "Check Contents, Workflows and Pull requests permissions on GitHub.",
+        "请检查 GitHub 的 Contents、Workflows 和 Pull requests 权限。",
+      );
+    case "workflow-network":
+      return t(
+        "GitHubとの処理を完了できませんでした。PR作成中だった場合は、同じ差分画面から再試行すると既存ブランチ・PRを確認します。",
+        "GitHub did not complete the request. Retry from the same preview to recover an existing branch or PR.",
+        "GitHub 请求未完成。请从同一预览重试，以检查并恢复已有分支或 PR。",
+      );
+    case "release-version":
+      return t(
+        "追加するバージョンを更新JSONのまとめとそろえてください。別の版を作る場合は、既存のプラットフォームを削除してください。",
+        "Match the draft version. Remove existing platforms to start another release.",
+        "请使用与草稿一致的版本。创建其他版本前，请移除现有平台。",
+      );
+    case "release-duplicate":
+      return t(
+        "このプラットフォームは追加済みです。変更する場合は一覧から削除して再検証してください。",
+        "Remove the existing platform before verifying its replacement.",
+        "请先移除已有平台，再验证替换的产物。",
+      );
+    case "release-key":
+      return t(
+        "検証後に公開鍵が変更されています。該当するプラットフォームを削除して再検証してください。",
+        "The public key has changed. Remove and verify the affected platform again.",
+        "验证后公钥已更改。请移除并重新验证对应平台。",
+      );
     case "vault-only":
       return t(
         "このパスワードは保管庫でのみ管理します。",

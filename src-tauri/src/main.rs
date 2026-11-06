@@ -1,13 +1,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod actions;
+mod apple_api;
 mod apple_ids;
 mod certificates;
 mod device;
+mod expiry;
 mod github_app;
 mod integrations;
 mod model;
 mod publishing;
+mod remote_artifact;
 mod sharing;
 mod vault;
+mod workflow_pr;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use device::Method;
 use model::{Document, Scope};
@@ -61,11 +66,11 @@ async fn snapshot(app: tauri::AppHandle, state: State<'_, Shared>) -> R<Value> {
             }
         };
         Ok(json!({"def":definition,"present":entry.is_some(),"display":display,"appIdPrefix":entry.and_then(|e|e.app_id_prefix.as_ref()).map(|p|match p { apple_ids::AppIdPrefix::Team => "team", apple_ids::AppIdPrefix::Custom(_) => "custom" }),"truncated":truncated,
-            "expires":entry.map(|x|&x.expires),"owner":local.and_then(|e|e.owner), "dependents":d.dependents(&w.scope,&definition.key),"sources":d.sources(&w.scope,&definition.key),"appPasswordLabel":entry.map(|e| &e.app_password_label),"fingerprint":entry.map(|e|&e.matched_fingerprint), "synced":local.map(|x|&x.synced),
+            "appleCheck":entry.and_then(|e|e.apple_check.as_ref()),"expires":entry.map(|x|&x.expires),"owner":local.and_then(|e|e.owner), "dependents":d.dependents(&w.scope,&definition.key),"sources":d.sources(&w.scope,&definition.key),"appPasswordLabel":entry.map(|e| &e.app_password_label),"fingerprint":entry.map(|e|&e.matched_fingerprint), "synced":local.map(|x|&x.synced),
             "binding":local.and_then(|x|x.binding.as_ref()),"evidence":entry.map(|x|&x.evidence)}))
     }).collect::<R<Vec<_>>>()?;
     Ok(
-        json!({"locked":false,"passkeyAvailable":Method::Passkey.available(),"passkeyEnabled":passkey_enabled,"deviceAvailable":Method::Mac.available(),"deviceEnabled":device_enabled,"scope":w.scope,"projects":d.projects,"githubApp":d.github_apps.get(&w.scope.project).map(|c|c.view()),"rows":rows,"selected":w.selected,"floating":panel(&app),"audit":d.audit.iter().rev().filter(|e|e.project==w.scope.project&&e.env==w.scope.env).take(150).collect::<Vec<_>>()}),
+        json!({"locked":false,"passkeyAvailable":Method::Passkey.available(),"passkeyEnabled":passkey_enabled,"deviceAvailable":Method::Mac.available(),"deviceEnabled":device_enabled,"scope":w.scope,"projects":d.projects,"githubApp":d.github_apps.get(&w.scope.project).map(|c|c.view()),"expiryOverview":expiry::overview(d,&w.scope,chrono::Local::now().date_naive()),"appleReport":d.apple_reports.get(&apple_api::Report::address(&w.scope)).map(|report|report.view(d,&w.scope,&s.key)),"workflowPreview":d.workflow_previews.get(&publishing::ReleaseDraft::address(&w.scope)).map(|p|p.view()),"releaseDraft":d.release_drafts.get(&publishing::ReleaseDraft::address(&w.scope)).map(|draft|draft.view(d,&w.scope,&s.key)),"actionReport":d.action_reports.get(&w.scope.project),"rows":rows,"selected":w.selected,"floating":panel(&app),"audit":d.audit.iter().rev().filter(|e|e.project==w.scope.project&&e.env==w.scope.env).take(150).collect::<Vec<_>>()}),
     )
 }
 #[tauri::command]
@@ -150,6 +155,12 @@ async fn lock(app: tauri::AppHandle, state: State<'_, Shared>) -> R<()> {
     Ok(())
 }
 #[tauri::command]
+async fn cancel_remote_check(state: State<'_, Shared>) -> R<()> {
+    let mut w = state.lock().map_err(|_| "busy")?;
+    w.auth_epoch += 1;
+    Ok(())
+}
+#[tauri::command]
 async fn select(
     app: tauri::AppHandle,
     state: State<'_, Shared>,
@@ -186,6 +197,11 @@ struct Input {
     app_id: String,
     installation_id: String,
     repo_id: String,
+    run_id: String,
+    preview_id: String,
+    report_id: String,
+    resource_id: String,
+    resource_kind: String,
     #[serde(flatten)]
     grants: github_app::Grants,
     environment: String,
@@ -253,6 +269,19 @@ async fn perform(
             .await
             .map(|()| Value::Null);
     }
+    if op == "release-check" {
+        return check_remote_artifact(app, &state, scope, input.platform)
+            .await
+            .map(|()| Value::Null);
+    }
+    if matches!(op.as_str(), "workflow-preview" | "workflow-create") {
+        return workflow_operation(app, &state, scope, op, input, &pass)
+            .await
+            .map(|()| Value::Null);
+    }
+    if op == "apple-fetch" {
+        return fetch_apple(app, &state, scope).await.map(|()| Value::Null);
+    }
     let bytes = match op.as_str() {
         "import-file" | "import-text" => Some(read(&pick(&[])?, 3 * 1024 * 1024)?),
         "key-match" | "certificate" => {
@@ -261,22 +290,22 @@ async fn perform(
         "app-connect" => Some(read(&pick(&["pem"])?, 64 * 1024)?),
         "check-conf" => Some(read(&pick(&["json"])?, 1024 * 1024)?),
         "csv-import" => Some(read(&pick(&["csv"])?, 4 * 1024 * 1024)?),
-        "verify" | "manifest" => Some(read(&pick(&["sig"])?, 16384)?),
+        "verify" | "manifest" | "release-add" => Some(read(&pick(&["sig"])?, 16384)?),
         _ => None,
     };
-    let artifact = if op == "verify" || op == "manifest" {
+    let artifact = if matches!(op.as_str(), "verify" | "manifest" | "release-add") {
         Some(pick(&[])?)
     } else {
         None
     };
     let out = match op.as_str() {
-        "backup" | "csv-export" | "manifest" | "workflow" => Some(
+        "backup" | "csv-export" | "manifest" | "workflow" | "release-export" => Some(
             rfd::FileDialog::new()
                 .set_file_name(if op == "backup" {
                     "ReleaseVault.rvbackup"
                 } else if op == "workflow" {
                     "build-updater.yml"
-                } else if op == "manifest" {
+                } else if op == "manifest" || op == "release-export" {
                     "latest.json"
                 } else {
                     "credentials.csv"
@@ -307,6 +336,7 @@ async fn perform(
             "import-text",
             "key-match",
             "certificate",
+            "apple-apply",
         ]
         .contains(&op.as_str())
         {
@@ -325,6 +355,57 @@ async fn perform(
             }
         }
         match op.as_str() {
+            "apple-apply" => v.change(|d, key| {
+                apple_api::apply(
+                    d,
+                    &scope,
+                    &input.key,
+                    &input.report_id,
+                    &input.resource_id,
+                    &input.resource_kind,
+                    key,
+                )
+            })?,
+            "actions-fetch" => {
+                let session = v.unlocked()?;
+                let report = if let Some(c) = session.doc.github_apps.get(&scope.project) {
+                    c.check_installation(&input.installation_id)?;
+                    github_app::runs(
+                        c,
+                        &input.repo,
+                        input.repo_id.parse().map_err(|_| "app-config")?,
+                        &session.key,
+                    )?
+                } else {
+                    integrations::workflow_runs(&input.repo)?
+                };
+                v.change(|d, _| {
+                    d.action_reports.insert(scope.project, report);
+                    d.event(&scope, &input.repo, "actions-fetch");
+                    Ok(())
+                })?;
+            }
+            "actions-open" => {
+                let session = v.unlocked()?;
+                let report = session
+                    .doc
+                    .action_reports
+                    .get(&scope.project)
+                    .ok_or("missing")?;
+                if report.repo != input.repo {
+                    return Err("scope".into());
+                }
+                let id: u64 = input.run_id.parse().map_err(|_| "invalid")?;
+                if !report.runs.iter().any(|run| run.id == id) {
+                    return Err("missing".into());
+                }
+                integrations::dest(&report.repo, "")?;
+                open::that(format!(
+                    "https://github.com/{}/actions/runs/{id}",
+                    report.repo
+                ))
+                .map_err(|_| "file")?;
+            }
             "share" | "unlink" => {
                 v.reauth(&pass)?;
                 v.change(|d, _| {
@@ -485,12 +566,48 @@ async fn perform(
                 v.change(|d, key| integrations::generate(d, &scope, key))?
             }
             "check-conf" => v.change(|d, key| integrations::check_conf(d, &scope, b, key))?,
+            "workflow-open" => {
+                let session = v.unlocked()?;
+                let preview = session
+                    .doc
+                    .workflow_previews
+                    .get(&publishing::ReleaseDraft::address(&scope))
+                    .ok_or("missing")?;
+                integrations::dest(&preview.repo, "")?;
+                let number = preview.pr.ok_or("missing")?;
+                open::that(format!("https://github.com/{}/pull/{number}", preview.repo))
+                    .map_err(|_| "file")?;
+            }
             "workflow" => {
-                v.unlocked()?;
-                save(
-                    out.as_ref().ok_or("file")?,
-                    publishing::workflow(&scope)?.as_bytes(),
-                )?;
+                let session = v.unlocked()?;
+                let yaml = if input.targets.is_empty() {
+                    publishing::workflow(&scope)?
+                } else {
+                    publishing::project_workflow(&session.doc, &scope, &input.targets)?
+                };
+                save(out.as_ref().ok_or("file")?, yaml.as_bytes())?;
+            }
+            "release-add" => v.change(|d, key| {
+                publishing::add_platform(
+                    d,
+                    &scope,
+                    key,
+                    artifact.as_ref().ok_or("file")?,
+                    b,
+                    publishing::ReleaseInfo {
+                        version: &input.version,
+                        platform: &input.platform,
+                        url: &input.url,
+                    },
+                )
+            })?,
+            "release-remove" => {
+                v.change(|d, _| publishing::remove_platform(d, &scope, &input.platform))?
+            }
+            "release-export" => {
+                let session = v.unlocked()?;
+                let bytes = publishing::combined_manifest(&session.doc, &scope, &session.key)?;
+                save(out.as_ref().ok_or("file")?, &bytes)?;
             }
             "manifest" => {
                 let s = v.unlocked()?;
@@ -570,6 +687,220 @@ fn guide_url(def: &model::Def, acquisition: bool) -> R<&'static str> {
     sources["links"][group][if acquisition { "get" } else { "docs" }]
         .as_str()
         .ok_or_else(|| "missing".into())
+}
+
+async fn fetch_apple(app: tauri::AppHandle, state: &Shared, scope: Scope) -> R<()> {
+    let (epoch, auth) = {
+        let mut w = state.lock().map_err(|_| "busy")?;
+        w.auth_epoch += 1;
+        let epoch = w.auth_epoch;
+        let session = w.vault.unlocked()?;
+        (
+            epoch,
+            apple_api::Credentials::load(&session.doc, &scope, &session.key)?,
+        )
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Shared>();
+        let validate = || -> R<()> {
+            let mut w = state.lock().map_err(|_| "busy")?;
+            if w.auth_epoch != epoch || w.scope != scope {
+                return Err("cancel".into());
+            }
+            let session = w.vault.unlocked()?;
+            if apple_api::Credentials::load(&session.doc, &scope, &session.key)?.fingerprint()
+                != auth.fingerprint()
+            {
+                return Err("apple-stale".into());
+            }
+            Ok(())
+        };
+        let report = apple_api::fetch(&apple_api::Api::apple(), &auth, validate)?;
+        let mut w = state.lock().map_err(|_| "busy")?;
+        if w.auth_epoch != epoch || w.scope != scope {
+            return Err("cancel".into());
+        }
+        w.vault.change(|d, key| {
+            if apple_api::Credentials::load(d, &scope, key)?.fingerprint() != report.credentials {
+                return Err("apple-stale".into());
+            }
+            d.apple_reports
+                .insert(apple_api::Report::address(&scope), report);
+            d.event(&scope, "", "apple-fetch");
+            Ok(())
+        })?;
+        drop(w);
+        notify(&app);
+        Ok(())
+    })
+    .await
+    .map_err(|_| "apple-network")?
+}
+
+async fn workflow_operation(
+    app: tauri::AppHandle,
+    state: &Shared,
+    scope: Scope,
+    op: String,
+    input: Input,
+    password: &str,
+) -> R<()> {
+    let writing = op == "workflow-create";
+    let (epoch, doc, key) = {
+        let mut w = state.lock().map_err(|_| "busy")?;
+        if writing {
+            w.vault.reauth(password)?;
+        }
+        w.auth_epoch += 1;
+        let epoch = w.auth_epoch;
+        let session = w.vault.unlocked()?;
+        (epoch, session.doc.clone(), session.key.clone())
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Shared>();
+        let connection = doc.github_apps.get(&scope.project);
+        let settings = serde_json::to_vec(&connection).map_err(|_| "format")?;
+        let validate = || -> R<()> {
+            let mut w = state.lock().map_err(|_| "busy")?;
+            if w.auth_epoch != epoch || w.scope != scope {
+                return Err("workflow-stale".into());
+            }
+            let current = w.vault.unlocked()?;
+            if serde_json::to_vec(&current.doc.github_apps.get(&scope.project))
+                .map_err(|_| "format")?
+                != settings
+            {
+                return Err("workflow-stale".into());
+            }
+            if writing
+                && current
+                    .doc
+                    .workflow_previews
+                    .get(&publishing::ReleaseDraft::address(&scope))
+                    .is_none_or(|p| p.id != input.preview_id)
+            {
+                return Err("workflow-stale".into());
+            }
+            Ok(())
+        };
+        let saved = if writing {
+            Some(
+                doc.workflow_previews
+                    .get(&publishing::ReleaseDraft::address(&scope))
+                    .filter(|p| p.id == input.preview_id)
+                    .ok_or("workflow-stale")?
+                    .clone(),
+            )
+        } else {
+            None
+        };
+        let (repo, id, installation) = if let Some(preview) = &saved {
+            (
+                preview.repo.clone(),
+                preview.repository,
+                preview.installation,
+            )
+        } else {
+            (
+                input.repo.clone(),
+                input.repo_id.parse().unwrap_or(0),
+                connection
+                    .map(|_| input.installation_id.parse())
+                    .transpose()
+                    .map_err(|_| "app-config")?,
+            )
+        };
+        validate()?;
+        let client: Box<dyn workflow_pr::Transport> = match (connection, installation) {
+            (Some(c), Some(installation)) => {
+                c.check_installation(&installation.to_string())?;
+                Box::new(github_app::workflow_client(c, &repo, id, &key, writing)?)
+            }
+            (None, None) => Box::new(integrations::CliWorkflowClient),
+            _ => return Err("workflow-stale".into()),
+        };
+        let mut client = workflow_pr::GuardedClient {
+            client,
+            validate: &validate,
+        };
+        let preview = if let Some(mut preview) = saved {
+            preview.pr = Some(workflow_pr::create(&mut client, &preview)?);
+            preview
+        } else {
+            let yaml = publishing::project_workflow(&doc, &scope, &input.targets)?;
+            workflow_pr::preview(&mut client, &repo, id, installation, yaml)?
+        };
+        validate()?;
+        let mut w = state.lock().map_err(|_| "busy")?;
+        if w.auth_epoch != epoch || w.scope != scope {
+            return Err("workflow-stale".into());
+        }
+        w.vault.change(|d, _| {
+            d.workflow_previews
+                .insert(publishing::ReleaseDraft::address(&scope), preview);
+            if writing {
+                d.event(&scope, &repo, "workflow-create");
+            }
+            Ok(())
+        })?;
+        drop(w);
+        notify(&app);
+        Ok(())
+    })
+    .await
+    .map_err(|_| "workflow-network")?
+}
+
+async fn check_remote_artifact(
+    app: tauri::AppHandle,
+    state: &Shared,
+    scope: Scope,
+    platform: String,
+) -> R<()> {
+    let (epoch, version, entry) = {
+        let mut w = state.lock().map_err(|_| "busy")?;
+        let epoch = w.auth_epoch;
+        let session = w.vault.unlocked()?;
+        let draft = session
+            .doc
+            .release_drafts
+            .get(&publishing::ReleaseDraft::address(&scope))
+            .ok_or("missing")?;
+        let entry = draft.platforms.get(&platform).ok_or("missing")?.clone();
+        let target = Scope {
+            target: entry.target.clone(),
+            ..scope.clone()
+        };
+        let public =
+            integrations::value(&session.doc, &target, integrations::PUBLIC, &session.key)?;
+        if public.as_slice() != entry.public_key {
+            return Err("release-key".into());
+        }
+        (epoch, draft.version.clone(), entry)
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Shared>();
+        let cancelled = || {
+            let Ok(mut w) = state.lock() else { return true };
+            w.vault.expire();
+            w.auth_epoch != epoch || w.scope != scope || w.vault.session.is_none()
+        };
+        let result = remote_artifact::verify(&entry, &version, cancelled);
+        let mut w = state.lock().map_err(|_| "busy")?;
+        if w.auth_epoch != epoch || w.scope != scope {
+            return Err("cancel".into());
+        }
+        w.vault.change(|d, key| {
+            publishing::record_remote_check(d, &scope, key, &platform, &version, &entry, result)?;
+            d.event(&scope, &platform, "release-check");
+            Ok(())
+        })?;
+        drop(w);
+        notify(&app);
+        Ok(())
+    })
+    .await
+    .map_err(|_| "download")?
 }
 
 async fn configure_device(
@@ -694,7 +1025,8 @@ fn main() {
             snapshot,
             select,
             perform,
-            float_panel
+            float_panel,
+            cancel_remote_check
         ])
         .run(tauri::generate_context!())
         .expect("ReleaseVault runtime");

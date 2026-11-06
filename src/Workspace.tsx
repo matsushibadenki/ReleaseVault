@@ -1,8 +1,13 @@
 import React from "react";
+import { ExpiryOverview } from "./ExpiryOverview";
 import { Inspector } from "./Inspector";
 import { useState, useEffect, useRef } from "react";
 import {
   KeyRound,
+  PlayCircle,
+  FileJson,
+  CalendarCheck,
+  CalendarClock,
   LockKeyhole,
   FolderClosed,
   Github,
@@ -31,6 +36,7 @@ import { status, type Row, type Scope, type T, type WorkProps } from "./types";
 import { Mark, Btn, Language, floating } from "./controls";
 function badge(r: Row, t: T) {
   return {
+    invalid: t("無効", "Invalid", "无效"),
     missing: t("未登録", "Missing", "未配置"),
     configured: t("設定済", "Configured", "已配置"),
     expired: t("期限切れ", "Expired", "已过期"),
@@ -58,6 +64,15 @@ export function Workspace(p: WorkProps) {
     [nav, setNav] = useState(false),
     [narrowDetail, detail] = useState(false),
     [keys, showKeys] = useState(true);
+  const selectedRow = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    if (view === "sheet" && s.selected) {
+      detail(true);
+      selectedRow.current?.scrollIntoView({ block: "nearest" });
+    } else if (view === "sheet") {
+      detail(false);
+    }
+  }, [view, s.selected, s.scope.project, s.scope.target, s.scope.env]);
   const [marked, mark] = useState<string[]>([]);
   const anchor = useRef("");
   useEffect(() => {
@@ -114,6 +129,7 @@ export function Workspace(p: WorkProps) {
     select(scope, k);
     setNav(false);
     if (!k) {
+      setView("sheet");
       search("");
       setFilter("all");
       detail(false);
@@ -124,9 +140,9 @@ export function Workspace(p: WorkProps) {
     <div
       className={
         "work" +
-        (s.floating ? " detached" : "") +
+        (s.floating || view === "expiry" ? " detached" : "") +
         (nav ? " nav-open" : "") +
-        (narrowDetail ? " detail-open" : "")
+        (narrowDetail && view !== "expiry" ? " detail-open" : "")
       }
     >
       <aside className="sidebar">
@@ -134,6 +150,16 @@ export function Workspace(p: WorkProps) {
           <Mark />
           ReleaseVault
         </div>
+        <button
+          className={"nav " + (view === "expiry" ? "active" : "")}
+          onClick={() => {
+            setView("expiry");
+            setNav(false);
+          }}
+        >
+          <CalendarClock />
+          {t("期限の一覧", "Expiry overview", "到期总览")}
+        </button>
         <div className="subhead">
           {t("プロジェクト", "Projects", "项目")}
           <Btn
@@ -178,6 +204,24 @@ export function Workspace(p: WorkProps) {
             <Github />
             GitHub App
           </button>
+          <button className="nav" onClick={() => show("actions")}>
+            <PlayCircle />
+            {t(
+              "Actionsの実行結果",
+              "Actions workflow runs",
+              "Actions 运行记录",
+            )}
+          </button>
+          <button className="nav" onClick={() => show("release")}>
+            <FileJson />
+            {t("更新JSONまとめ", "Combined update JSON", "更新 JSON 汇总")}
+          </button>
+          {s.rows.some((row) => row.def.key === "APPLE_API_KEY_P8") && (
+            <button className="nav" onClick={() => show("apple")}>
+              <CalendarCheck />
+              {t("Appleの有効期限", "Apple expiry dates", "Apple 到期日期")}
+            </button>
+          )}
           {(s.passkeyAvailable || s.passkeyEnabled) && (
             <button
               className="nav"
@@ -231,50 +275,83 @@ export function Workspace(p: WorkProps) {
               click={() => setNav(!nav)}
             />
             <FolderClosed size={13} />
-            {project.name}
-            <span>/</span>
-            {targets[s.scope.target]}
+            {view === "expiry" ? (
+              t("すべてのプロジェクト", "All projects", "所有项目")
+            ) : (
+              <>
+                {project.name}
+                <span>/</span>
+                {targets[s.scope.target]}
+              </>
+            )}
           </div>
           <div className="headline">
             <h1>
               {view === "sheet"
                 ? t("資格情報シート", "Credential sheet", "凭据表")
-                : t("操作履歴", "Activity log", "操作记录")}
+                : view === "expiry"
+                  ? t("期限の一覧", "Expiry overview", "到期总览")
+                  : t("操作履歴", "Activity log", "操作记录")}
             </h1>
-            <select
-              value={s.scope.env}
-              aria-label={t("環境", "Environment", "环境")}
-              onChange={(e) => choose({ ...s.scope, env: e.target.value })}
-            >
-              {["Development", "Staging", "Production"].map((x) => (
-                <option key={x}>{x}</option>
-              ))}
-            </select>
+            {view === "expiry" ? (
+              <Btn
+                icon={Table2}
+                title={t("資格情報シート", "Credential sheet", "凭据表")}
+                click={() => setView("sheet")}
+              />
+            ) : (
+              <select
+                value={s.scope.env}
+                aria-label={t("環境", "Environment", "环境")}
+                onChange={(e) => choose({ ...s.scope, env: e.target.value })}
+              >
+                {["Development", "Staging", "Production"].map((x) => (
+                  <option key={x}>{x}</option>
+                ))}
+              </select>
+            )}
           </div>
-          <div className="stats">
-            <span>
-              {t("項目", "Items", "项目")} <b>{s.rows.length}</b>
-            </span>
-            <span>
-              {t("設定済", "Configured", "已配置")}{" "}
-              <b className="teal">{ready}</b>
-            </span>
-            <span>
-              {t("未登録", "Missing", "未配置")} <b>{s.rows.length - ready}</b>
-            </span>
-            <span className="spacer" />
-            <Btn
-              icon={view === "sheet" ? History : Table2}
-              title={
-                view === "sheet"
-                  ? t("操作履歴", "Activity log", "操作记录")
-                  : t("資格情報シート", "Credential sheet", "凭据表")
-              }
-              click={() => setView(view === "sheet" ? "audit" : "sheet")}
-            />
-          </div>
+          {view !== "expiry" && (
+            <div className="stats">
+              <span>
+                {t("項目", "Items", "项目")} <b>{s.rows.length}</b>
+              </span>
+              <span>
+                {t("設定済", "Configured", "已配置")}{" "}
+                <b className="teal">{ready}</b>
+              </span>
+              <span>
+                {t("未登録", "Missing", "未配置")}{" "}
+                <b>{s.rows.length - ready}</b>
+              </span>
+              <span className="spacer" />
+              <Btn
+                icon={view === "sheet" ? History : Table2}
+                title={
+                  view === "sheet"
+                    ? t("操作履歴", "Activity log", "操作记录")
+                    : t("資格情報シート", "Credential sheet", "凭据表")
+                }
+                click={() => setView(view === "sheet" ? "audit" : "sheet")}
+              />
+            </div>
+          )}
         </header>
-        {view === "sheet" ? (
+        {view === "expiry" ? (
+          <ExpiryOverview
+            snap={s}
+            t={t}
+            open={(item) => {
+              search("");
+              setFilter("all");
+              mark([]);
+              anchor.current = item.def.key;
+              setView("sheet");
+              choose(item.scope, item.def.key);
+              detail(true);
+            }}
+          />
+        ) : view === "sheet" ? (
           <>
             <div className="toolbar">
               <label className="input-icon">
@@ -299,18 +376,21 @@ export function Workspace(p: WorkProps) {
                   <option value="all">
                     {t("全状態", "All statuses", "全部状态")}
                   </option>
-                  {["missing", "configured", "soon", "expired"].map((v, i) => (
-                    <option key={v} value={v}>
-                      {
-                        [
-                          t("未登録", "Missing", "未配置"),
-                          t("設定済", "Configured", "已配置"),
-                          t("期限間近", "Due soon", "即将到期"),
-                          t("期限切れ", "Expired", "已过期"),
-                        ][i]
-                      }
-                    </option>
-                  ))}
+                  {["missing", "configured", "soon", "expired", "invalid"].map(
+                    (v, i) => (
+                      <option key={v} value={v}>
+                        {
+                          [
+                            t("未登録", "Missing", "未配置"),
+                            t("設定済", "Configured", "已配置"),
+                            t("期限間近", "Due soon", "即将到期"),
+                            t("期限切れ", "Expired", "已过期"),
+                            t("無効", "Invalid", "无效"),
+                          ][i]
+                        }
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
               <Btn
@@ -378,6 +458,9 @@ export function Workspace(p: WorkProps) {
                       return (
                         <tr
                           key={r.def.key}
+                          ref={
+                            r.def.key === s.selected ? selectedRow : undefined
+                          }
                           tabIndex={0}
                           aria-selected={r.def.key === row?.def.key}
                           className={
@@ -479,7 +562,7 @@ export function Workspace(p: WorkProps) {
           </section>
         )}
       </main>
-      {!s.floating && row && (
+      {view !== "expiry" && !s.floating && row && (
         <Inspector {...p} row={row} back={() => detail(false)} />
       )}
     </div>
@@ -489,6 +572,26 @@ function eventName(a: string, t: T) {
   return (
     (
       {
+        "apple-fetch": t(
+          "Appleから期限を取得",
+          "Fetched Apple expiry dates",
+          "已获取 Apple 到期日期",
+        ),
+        "apple-apply": t(
+          "Appleの期限を反映",
+          "Updated expiry from Apple",
+          "已更新 Apple 到期日期",
+        ),
+        "release-check": t(
+          "公開ファイルを署名照合",
+          "Verified hosted artifact",
+          "已核对托管文件签名",
+        ),
+        "actions-fetch": t(
+          "Actionsの実行結果を取得",
+          "Fetched workflow runs",
+          "已获取 Actions 运行记录",
+        ),
         save: t("保存", "Saved", "已保存"),
         "app-connect": t(
           "GitHub Appに接続",

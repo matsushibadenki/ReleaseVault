@@ -89,20 +89,49 @@ export function GitHubAccess({
         </label>
       )}
       {repo &&
-        (["secrets", "variables", "environments"] as const).map((p) => (
+        (
+          [
+            "secrets",
+            "variables",
+            "environments",
+            "actions",
+            "contents",
+            "workflows",
+            "pull_requests",
+          ] as const
+        ).map((p) => (
           <label key={repo.id + p + repo.grants[p]}>
-            {p === "environments"
-              ? t(
-                  "Environment の Secrets・Variables",
-                  "Environment secrets and variables",
-                  "环境机密和变量",
-                )
-              : p === "secrets"
-                ? "Repository Secrets"
-                : "Repository Variables"}
-            <select name={p} defaultValue={repo.grants[p]}>
+            {p === "contents"
+              ? t("リポジトリのファイル", "Repository contents", "仓库文件")
+              : p === "workflows"
+                ? t("ワークフローの変更", "Workflow changes", "更改工作流")
+                : p === "pull_requests"
+                  ? "Pull requests"
+                  : p === "actions"
+                    ? t(
+                        "Actionsの実行結果",
+                        "Actions workflow runs",
+                        "Actions 运行记录",
+                      )
+                    : p === "environments"
+                      ? t(
+                          "Environment の Secrets・Variables",
+                          "Environment secrets and variables",
+                          "环境机密和变量",
+                        )
+                      : p === "secrets"
+                        ? "Repository Secrets"
+                        : "Repository Variables"}
+            <select name={p} defaultValue={repo.grants[p] ?? "none"}>
               {options
-                .slice(0, options.indexOf(connection.limits[p]) + 1)
+                .slice(
+                  0,
+                  Math.min(
+                    p === "actions" ? 1 : 2,
+                    options.indexOf(connection.limits[p] ?? "none"),
+                  ) + 1,
+                )
+                .filter((level) => p !== "workflows" || level !== "read")
                 .map((level) => (
                   <option value={level} key={level}>
                     {labels[level]}

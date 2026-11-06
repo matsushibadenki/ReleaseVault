@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { ExternalLink, X } from "lucide-react";
 import { credentialName, targets } from "./guide";
 import { type Row, type Sheet, type T, type FormValues } from "./types";
+import { AppleResources } from "./AppleResources";
+import { WorkflowPreview } from "./WorkflowPreview";
+import { ReleaseDraft } from "./ReleaseDraft";
+import { ActionsReport } from "./ActionsReport";
 import { GitHubAccess } from "./GitHubAccess";
 import references from "../resources/sources.json";
 import { Btn } from "./controls";
@@ -26,6 +30,8 @@ export function Dialog({
   t,
   busy,
   message,
+  cancelDownload,
+  lockDownload,
   close,
   submit,
   show,
@@ -37,6 +43,8 @@ export function Dialog({
   t: T;
   busy: boolean;
   message: string;
+  cancelDownload?: () => void;
+  lockDownload?: () => void;
   close: () => void;
   show: (modal: string) => void;
   action: (op: string, data: FormValues) => void;
@@ -46,11 +54,26 @@ export function Dialog({
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
+  const workflowCanCreate =
+    !snap.githubApp ||
+    Boolean(
+      snap.githubApp.repos.find(
+        (repo) =>
+          repo.name === snap.workflowPreview?.repo &&
+          repo.grants.contents === "write" &&
+          repo.grants.workflows === "write" &&
+          repo.grants.pull_requests === "write",
+      ),
+    );
   const secret = row?.def.kind === "secret",
     affected = ["save", "choose-import", "certificate", "key-match"].includes(m)
       ? (row?.dependents ?? [])
       : [],
     needsPass =
+      (m === "workflow-review" &&
+        workflowCanCreate &&
+        Boolean(snap.workflowPreview?.changed) &&
+        !snap.workflowPreview?.pr) ||
       affected.length > 0 ||
       [
         "github",
@@ -89,6 +112,44 @@ export function Dialog({
     currentId.endsWith(suffix) ? currentId.slice(0, -suffix.length) : team,
   );
   const existing = snap.projects.find((p) => p.id === snap.scope.project)!;
+  const workflowOptions = [
+    {
+      platform: "darwin-aarch64",
+      name: "macOS · Apple Silicon",
+      target: "mac-direct",
+    },
+    { platform: "darwin-x86_64", name: "macOS · Intel", target: "mac-direct" },
+    {
+      platform: "windows-x86_64",
+      name: "Windows · x64",
+      target: "windows-direct",
+    },
+    {
+      platform: "linux-x86_64",
+      name: "Linux AppImage · x64",
+      target: "linux-appimage",
+    },
+  ].filter(
+    (option) =>
+      existing.targets.includes(option.target) ||
+      (option.target === "windows-direct" &&
+        existing.targets.includes("windows-exe")),
+  );
+  const [workflowTargets, setWorkflowTargets] = useState(() =>
+    workflowOptions.map((option) => option.platform),
+  );
+  const workflowRepos =
+    snap.githubApp?.repos.filter((repo) =>
+      ["read", "write"].includes(repo.grants.contents ?? "none"),
+    ) ?? [];
+  const [workflowRepo, setWorkflowRepo] = useState(
+    snap.rows.find((row) => row.def.key === "RELEASE_REPOSITORY")?.display ||
+      workflowRepos[0]?.name ||
+      "",
+  );
+  const workflowRepository = workflowRepos.find(
+    (repo) => repo.name === workflowRepo,
+  );
   const isProject = m === "project" || m === "edit-project";
   const [picked, pick] = useState<string[]>(
       m === "edit-project" ? existing.targets : ["mac-direct", "mac-store"],
@@ -129,6 +190,11 @@ export function Dialog({
       "Unlink from this project",
       "取消本项目的引用",
     ),
+    actions: t(
+      "Actionsの実行結果",
+      "Actions workflow runs",
+      "Actions 运行记录",
+    ),
     "key-match": t(
       "証明書を選んで照合",
       "Choose certificate and verify",
@@ -156,6 +222,23 @@ export function Dialog({
       "停用 Mac 身份验证",
     ),
     "edit-project": t("プロジェクト設定", "Project settings", "项目设置"),
+    apple: t("Appleの有効期限", "Apple expiry dates", "Apple 到期日期"),
+    "workflow-review": t(
+      "ワークフローの差分",
+      "Workflow changes",
+      "工作流差异",
+    ),
+    workflow: t(
+      "ビルド用Actionsを書き出す",
+      "Export build workflow",
+      "导出构建工作流",
+    ),
+    release: t("更新JSONまとめ", "Combined update JSON", "更新 JSON 汇总"),
+    "release-add": t(
+      "署名を検証して追加",
+      "Verify and add platform",
+      "验证并添加平台",
+    ),
     manifest: t("更新JSONを生成", "Create update manifest", "生成更新清单"),
     save: t("値を編集", "Edit value", "编辑值"),
     project: t("プロジェクトを追加", "New project", "新建项目"),
@@ -178,16 +261,19 @@ export function Dialog({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (m === "actions" || m === "release" || m === "apple") return;
           const f = e.currentTarget;
           const values = Object.fromEntries(new FormData(f)) as Record<
             string,
             string
           >;
           if (isProject && !picked.length) return;
+          if (m === "workflow" && !workflowTargets.length) return;
           submit({
             ...values,
             affected: affected.map(String),
             ...(isProject ? { targets: picked } : {}),
+            ...(m === "workflow" ? { targets: workflowTargets } : {}),
           });
           if (needsPass) {
             const pass = f.elements.namedItem("password") as HTMLInputElement;
@@ -209,6 +295,11 @@ export function Dialog({
           "edit-project",
           "custom",
           "backup",
+          "actions",
+          "release",
+          "workflow",
+          "workflow-review",
+          "apple",
           "device-enable",
           "device-disable",
           "passkey-enable",
@@ -341,6 +432,130 @@ export function Dialog({
               "使用此 Mac 的身份验证解锁。恢复时仍需主密码。",
             )}
           </p>
+        )}
+        {m === "apple" && (
+          <AppleResources snap={snap} t={t} busy={busy} action={action} />
+        )}
+        {m === "workflow-review" && (
+          <WorkflowPreview snap={snap} t={t} busy={busy} action={action} />
+        )}
+        {m === "workflow" && (
+          <>
+            <fieldset>
+              <legend>
+                {t("ビルドするOS・CPU", "Build platforms", "构建平台")}
+              </legend>
+              <div className="checks">
+                {workflowOptions.map((option) => (
+                  <label key={option.platform}>
+                    <input
+                      type="checkbox"
+                      checked={workflowTargets.includes(option.platform)}
+                      onChange={(e) =>
+                        setWorkflowTargets((prev) =>
+                          e.target.checked
+                            ? [...prev, option.platform]
+                            : prev.filter((value) => value !== option.platform),
+                        )
+                      }
+                    />
+                    {option.name}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            {!workflowOptions.length && (
+              <p>
+                {t(
+                  "プロジェクトに直接配布先を追加してください。",
+                  "Add a direct distribution target to this project.",
+                  "请为此项目添加直接分发目标。",
+                )}
+              </p>
+            )}
+            <small>
+              {t(
+                "選択した環境のSecrets・Variablesを使い、手動実行でビルドします。各OSの成果物と署名を1つのダウンロードにまとめます。",
+                "Builds manually using secrets and variables from the selected environment. Collects each platform’s artifacts and signatures in one download.",
+                "使用所选环境的机密和变量手动构建，将各平台产物及签名汇总为一个下载。",
+              )}
+            </small>
+            <small>
+              {t(
+                "保存したYAMLをリポジトリの.github/workflowsに配置してください。",
+                "Place the exported YAML in the repository’s .github/workflows directory.",
+                "请将导出的 YAML 放入仓库的 .github/workflows 目录。",
+              )}
+            </small>
+            <label>
+              {t("PRの対象リポジトリ", "Repository for PR", "PR 目标仓库")}
+              {app ? (
+                <select
+                  value={workflowRepo}
+                  onChange={(e) => setWorkflowRepo(e.target.value)}
+                >
+                  <option value="">
+                    {t("選択してください", "Select repository", "请选择仓库")}
+                  </option>
+                  {workflowRepos.map((repo) => (
+                    <option key={repo.id} value={repo.name}>
+                      {repo.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={workflowRepo}
+                  onChange={(e) => setWorkflowRepo(e.target.value)}
+                  placeholder="owner/repository"
+                />
+              )}
+            </label>
+            <button
+              type="button"
+              disabled={
+                busy ||
+                !workflowTargets.length ||
+                !workflowRepo.trim() ||
+                Boolean(app && !workflowRepository)
+              }
+              onClick={() =>
+                action("workflow-preview", {
+                  repo: workflowRepo.trim(),
+                  repo_id: workflowRepository?.id || "",
+                  installation_id: app?.installation || "",
+                  targets: workflowTargets,
+                })
+              }
+            >
+              {t(
+                "差分を取得して確認",
+                "Preview repository changes",
+                "获取并预览更改",
+              )}
+            </button>
+            {app && !workflowRepos.length && (
+              <small>
+                {t(
+                  "GitHub AppのContents読み取り権限を設定し、リポジトリを再取得してください。",
+                  "Grant Contents read access in GitHub App settings and refresh repositories.",
+                  "请设置 GitHub App 的 Contents 读取权限并刷新仓库。",
+                )}
+              </small>
+            )}
+          </>
+        )}
+        {m === "release" && (
+          <ReleaseDraft
+            snap={snap}
+            t={t}
+            busy={busy}
+            action={action}
+            show={show}
+          />
+        )}
+        {m === "actions" && (
+          <ActionsReport snap={snap} t={t} busy={busy} action={action} />
         )}
         {m === "save" && (
           <>
@@ -638,18 +853,32 @@ export function Dialog({
             </small>
           </>
         )}
-        {m === "manifest" && (
+        {(m === "manifest" || m === "release-add") && (
           <>
             <p>
               {t(
-                "署名ファイル、成果物、保存先の順に選びます。選択したOSの単一プラットフォーム用です。",
-                "Choose a signature, artifact, then destination. The manifest contains this platform only.",
-                "依次选择签名、产物和保存位置。此清单仅包含当前平台。",
+                m === "release-add"
+                  ? "続けて署名ファイル（.sig）と、その成果物を選びます。"
+                  : "署名ファイル、成果物、保存先の順に選びます。選択したOSの単一プラットフォーム用です。",
+                m === "release-add"
+                  ? "Next, choose the .sig file and its artifact."
+                  : "Choose a signature, artifact, then destination. The manifest contains this platform only.",
+                m === "release-add"
+                  ? "接下来请选择 .sig 文件及对应产物。"
+                  : "依次选择签名、产物和保存位置。此清单仅包含当前平台。",
               )}
             </p>
             <label>
               Version
-              <input name="version" placeholder="1.0.0" required />
+              <input
+                name="version"
+                placeholder="1.0.0"
+                defaultValue={
+                  m === "release-add" ? snap.releaseDraft?.version : ""
+                }
+                readOnly={m === "release-add" && Boolean(snap.releaseDraft)}
+                required
+              />
             </label>
             <label>
               Platform
@@ -713,35 +942,60 @@ export function Dialog({
           </label>
         )}
         {message && <small role="alert">{message}</small>}
+        {lockDownload && (
+          <button type="button" onClick={lockDownload}>
+            {t("ロックして中止", "Lock and cancel", "锁定并取消")}
+          </button>
+        )}
+        {cancelDownload && (
+          <button type="button" onClick={cancelDownload}>
+            {t("取得を中止", "Cancel download", "取消下载")}
+          </button>
+        )}
         <div className="dialog-foot">
           <button type="button" disabled={busy} onClick={close}>
-            {t("キャンセル", "Cancel", "取消")}
+            {m === "actions" ||
+            m === "release" ||
+            m === "workflow-review" ||
+            m === "apple"
+              ? t("閉じる", "Close", "关闭")
+              : t("キャンセル", "Cancel", "取消")}
           </button>
-          <button
-            className={"primary" + (m === "clear" ? " danger" : "")}
-            disabled={
-              busy ||
-              (isProject && !picked.length) ||
-              ((m === "github" || inspect) && !!app && !selectedRepo) ||
-              (m === "app-permission" && !app?.repos.length)
-            }
-          >
-            {m === "app-connect"
-              ? t(
-                  "秘密鍵を選んで接続",
-                  "Choose key and connect",
-                  "选择私钥并连接",
-                )
-              : m === "app-permission"
-                ? t("権限を保存", "Save access", "保存权限")
-                : m === "app-disconnect"
-                  ? t("接続を解除", "Disconnect", "断开连接")
-                  : m === "github"
-                    ? t("確認して送信", "Confirm and send", "确认发送")
-                    : m === "save"
-                      ? t("保存", "Save", "保存")
-                      : titles[m]}
-          </button>
+          {m !== "actions" &&
+            m !== "release" &&
+            m !== "apple" &&
+            (m !== "workflow-review" ||
+              (snap.workflowPreview?.changed && !snap.workflowPreview.pr)) && (
+              <button
+                className={"primary" + (m === "clear" ? " danger" : "")}
+                disabled={
+                  busy ||
+                  (isProject && !picked.length) ||
+                  (m === "workflow" && !workflowTargets.length) ||
+                  (m === "workflow-review" && !workflowCanCreate) ||
+                  ((m === "github" || inspect) && !!app && !selectedRepo) ||
+                  (m === "app-permission" && !app?.repos.length)
+                }
+              >
+                {m === "workflow-review"
+                  ? t("Draft PRを作成", "Create draft PR", "创建草稿 PR")
+                  : m === "app-connect"
+                    ? t(
+                        "秘密鍵を選んで接続",
+                        "Choose key and connect",
+                        "选择私钥并连接",
+                      )
+                    : m === "app-permission"
+                      ? t("権限を保存", "Save access", "保存权限")
+                      : m === "app-disconnect"
+                        ? t("接続を解除", "Disconnect", "断开连接")
+                        : m === "github"
+                          ? t("確認して送信", "Confirm and send", "确认发送")
+                          : m === "save"
+                            ? t("保存", "Save", "保存")
+                            : titles[m]}
+              </button>
+            )}
         </div>
       </form>
     </dialog>

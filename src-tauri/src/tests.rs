@@ -151,6 +151,137 @@ fn tauri_cli_signatures_verify_and_tampering_fails() {
         },
     )
     .unwrap();
+    d.projects[0]
+        .targets
+        .extend(["windows-direct".into(), "linux-appimage".into()]);
+    for (target, platform) in [
+        ("mac-direct", "darwin-aarch64"),
+        ("windows-direct", "windows-x86_64"),
+        ("linux-appimage", "linux-x86_64"),
+    ] {
+        let scope = Scope {
+            target: target.into(),
+            ..s.clone()
+        };
+        publishing::add_platform(
+            &mut d,
+            &scope,
+            &key,
+            &artifact,
+            &sig,
+            publishing::ReleaseInfo {
+                version: "1.0.0",
+                platform,
+                url: "https://example.test/sample.bin",
+            },
+        )
+        .unwrap();
+    }
+    let entry = d.release_drafts[&publishing::ReleaseDraft::address(&s)].platforms
+        ["darwin-aarch64"]
+        .clone();
+    remote_artifact::tests::signed_https_cases(&entry, &std::fs::read(&artifact).unwrap());
+    let check = publishing::RemoteCheck {
+        checked: "2026-11-06T00:00:00Z".into(),
+        status: "verified".into(),
+        bytes: Some(26),
+    };
+    publishing::record_remote_check(
+        &mut d,
+        &s,
+        &key,
+        "darwin-aarch64",
+        "1.0.0",
+        &entry,
+        check.clone(),
+    )
+    .unwrap();
+    let mut stale = entry.clone();
+    stale.url = "https://example.test/old".into();
+    assert!(publishing::record_remote_check(
+        &mut d,
+        &s,
+        &key,
+        "darwin-aarch64",
+        "1.0.0",
+        &stale,
+        check.clone()
+    )
+    .is_err());
+    assert!(publishing::record_remote_check(
+        &mut d,
+        &s,
+        &key,
+        "darwin-aarch64",
+        "0.9.0",
+        &entry,
+        check.clone()
+    )
+    .is_err());
+    let original = serde_json::to_vec(&d.release_drafts).unwrap();
+    assert!(publishing::add_platform(
+        &mut d,
+        &s,
+        &key,
+        &artifact,
+        &sig,
+        publishing::ReleaseInfo {
+            version: "1.0.1",
+            platform: "darwin-x86_64",
+            url: "https://example.test/sample.bin"
+        }
+    )
+    .is_err());
+    assert!(publishing::add_platform(
+        &mut d,
+        &s,
+        &key,
+        &artifact,
+        &sig,
+        publishing::ReleaseInfo {
+            version: "1.0.0",
+            platform: "darwin-aarch64",
+            url: "https://example.test/sample.bin"
+        }
+    )
+    .is_err());
+    assert_eq!(original, serde_json::to_vec(&d.release_drafts).unwrap());
+    let restored: Document = serde_json::from_slice(&serde_json::to_vec(&d).unwrap()).unwrap();
+    let combined: Value =
+        serde_json::from_slice(&publishing::combined_manifest(&restored, &s, &key).unwrap())
+            .unwrap();
+    assert_eq!(combined["platforms"].as_object().unwrap().len(), 3);
+    assert_eq!(
+        combined["platforms"]["windows-x86_64"]["signature"],
+        std::str::from_utf8(sig.trim_ascii()).unwrap()
+    );
+    assert!(publishing::combined_manifest(
+        &d,
+        &Scope {
+            env: "Staging".into(),
+            ..s.clone()
+        },
+        &key
+    )
+    .is_err());
+    let mut changed = restored;
+    changed
+        .save(&s, PUBLIC, b"changed key", "", &key)
+        .unwrap_err();
+    // Force a stale verification record as if a previously configured key had been replaced.
+    changed
+        .entries
+        .get_mut(&Document::address(&s, PUBLIC))
+        .unwrap()
+        .cipher = vault::seal(&key, b"another-key").unwrap();
+    assert!(publishing::combined_manifest(&changed, &s, &key).is_err());
+    publishing::remove_platform(&mut d, &s, "linux-x86_64").unwrap();
+    assert_eq!(
+        d.release_drafts[&publishing::ReleaseDraft::address(&s)]
+            .platforms
+            .len(),
+        2
+    );
     let m: Value = serde_json::from_slice(&manifest).unwrap();
     assert_eq!(
         m["platforms"]["darwin-aarch64"]["url"],
@@ -650,5 +781,217 @@ fn derived_app_id_preserves_prefix_across_edits_and_restart() {
     assert_eq!(
         id(&mut vault, &staging).as_deref(),
         Some("MANUAL0001.com.example.old")
+    );
+}
+
+#[test]
+fn multi_os_workflow_selects_only_configured_targets_and_isolates_artifacts() {
+    let mut d = Document::initial();
+    let s = Scope::default();
+    let all = [
+        "darwin-aarch64",
+        "darwin-x86_64",
+        "windows-x86_64",
+        "linux-x86_64",
+    ]
+    .map(String::from);
+    assert!(publishing::project_workflow(&d, &s, &all).is_err());
+    assert!(publishing::project_workflow(&d, &s, &[]).is_err());
+    assert!(publishing::project_workflow(&d, &s, &["bad\n    run: injected".into()]).is_err());
+    d.projects[0]
+        .targets
+        .extend(["windows-exe".into(), "linux-appimage".into()]);
+    let yaml = publishing::project_workflow(&d, &s, &all).unwrap();
+    assert_eq!(yaml.matches("      - uses: actions/checkout@v4").count(), 4);
+    assert_eq!(yaml.matches("environment: Production").count(), 4);
+    assert_eq!(
+        yaml.matches("          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}")
+            .count(),
+        2
+    );
+    assert!(!yaml.contains("APPLE_ACCOUNT_PASSWORD"));
+    assert!(!yaml.contains("contents: write"));
+    assert!(yaml.contains("permissions:\n  contents: read"));
+    for platform in &all {
+        assert!(yaml.contains(&format!("name: updater-{platform}")));
+        assert!(yaml.contains(&format!("      - build_{}", platform.replace('-', "_"))));
+    }
+    assert!(yaml.contains("merge-multiple: false"));
+    assert!(yaml.contains("No signed updater artifacts were generated"));
+    assert!(yaml.contains("createUpdaterArtifacts:true"));
+    assert!(publishing::project_workflow(&d, &s, &[all[0].clone(), all[0].clone()]).is_err());
+    let invalid = Scope {
+        env: "Production\nrun: injected".into(),
+        ..s.clone()
+    };
+    assert!(publishing::project_workflow(&d, &invalid, &all).is_err());
+    if let Ok(file) = std::env::var("RV_WORKFLOW_QA") {
+        std::fs::write(file, &yaml).unwrap();
+    }
+}
+
+#[test]
+#[cfg(unix)]
+fn workflow_cli_preserves_http_status_for_missing_file() {
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = tempdir().unwrap();
+    let script = tmp.path().join("fake-gh");
+    std::fs::write(
+        &script,
+        br#"#!/bin/sh
+printf 'HTTP/2.0 404 Not Found\r\nContent-Type: application/json\r\n\r\n{"message":"not found"}\n'
+exit 1
+"#,
+    )
+    .unwrap();
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let (status, body) = workflow_cli_with(
+        Command::new(script),
+        "GET",
+        "/repos/example/test/contents/test",
+        None,
+    )
+    .unwrap();
+    assert_eq!(status, 404);
+    assert_eq!(body["message"], "not found");
+}
+
+#[test]
+fn expiry_overview_groups_shared_entries_and_keeps_metadata_only() {
+    let key = Zeroizing::new(vault::random());
+    let mut d = Document::initial();
+    let today = chrono::NaiveDate::from_ymd_opt(2026, 11, 6).unwrap();
+    let s = Scope::default();
+    d.save(
+        &s,
+        "APPLE_CERTIFICATE",
+        b"private-value-must-stay-in-rust",
+        "2026-11-05",
+        &key,
+    )
+    .unwrap();
+    let receiver = d
+        .add_project("Receiver", vec!["mac-direct".into()])
+        .unwrap();
+    let linked = Scope {
+        project: receiver,
+        ..s.clone()
+    };
+    d.link(&linked, "APPLE_CERTIFICATE", s.project).unwrap();
+    let staging = Scope {
+        env: "Staging".into(),
+        ..s.clone()
+    };
+    d.save(&staging, "APPLE_CERTIFICATE", b"other", "2026-12-06", &key)
+        .unwrap();
+    let store = Scope {
+        target: "mac-store".into(),
+        ..s.clone()
+    };
+    d.save(
+        &store,
+        "APPLE_PROVISIONING_PROFILE",
+        b"profile",
+        "2030-01-01",
+        &key,
+    )
+    .unwrap();
+    d.entries
+        .get_mut(&Document::address(&store, "APPLE_PROVISIONING_PROFILE"))
+        .unwrap()
+        .apple_check = Some(apple_api::Evidence {
+        kind: "profiles".into(),
+        id: "profile-1".into(),
+        name: "Test profile".into(),
+        checked: "2026-11-06T00:00:00Z".into(),
+        state: "INVALID".into(),
+    });
+    d.save(&s, "APPLE_TEAM_ID", b"TEAM123456", "", &key)
+        .unwrap();
+    let report = expiry::overview(&d, &linked, today);
+    assert_eq!(report.items.len(), 3);
+    assert_eq!(report.items[0].state, expiry::State::Invalid);
+    let expired = report
+        .items
+        .iter()
+        .find(|item| item.flags.contains(&expiry::State::Expired))
+        .unwrap();
+    assert_eq!(expired.days, Some(-1));
+    assert_eq!(expired.projects.len(), 2);
+    assert_eq!(expired.scope.project, s.project);
+    assert!(expired.flags.contains(&expiry::State::Unchecked));
+    let soon = report
+        .items
+        .iter()
+        .find(|item| item.scope.env == "Staging")
+        .unwrap();
+    assert_eq!(soon.days, Some(30));
+    assert!(soon.flags.contains(&expiry::State::Soon));
+    let json = serde_json::to_string(&report).unwrap();
+    assert!(!json.contains("private-value-must-stay-in-rust"));
+    assert!(!json.contains("cipher"));
+    assert!(!report
+        .items
+        .iter()
+        .any(|item| item.def.key == "APPLE_TEAM_ID"));
+    d.custom(&s, "CUSTOM_EXPIRING", "Reference token", "secret")
+        .unwrap();
+    d.custom(&linked, "CUSTOM_EXPIRING", "Source token", "secret")
+        .unwrap();
+    d.save(
+        &linked,
+        "CUSTOM_EXPIRING",
+        b"custom-secret",
+        "2026-11-07",
+        &key,
+    )
+    .unwrap();
+    d.link(&s, "CUSTOM_EXPIRING", linked.project).unwrap();
+    let report = expiry::overview(&d, &s, today);
+    let custom = report
+        .items
+        .iter()
+        .find(|item| item.def.key == "CUSTOM_EXPIRING")
+        .unwrap();
+    assert_eq!(custom.def.name, "Source token");
+    assert_eq!(custom.source_id, linked.project);
+    assert_eq!(custom.scope.project, linked.project);
+    assert_eq!(custom.projects.len(), 2);
+}
+#[test]
+fn expiry_overview_handles_today_and_unset_dates() {
+    let key = Zeroizing::new(vault::random());
+    let mut d = Document::initial();
+    let s = Scope::default();
+    let today = chrono::NaiveDate::from_ymd_opt(2026, 11, 6).unwrap();
+    d.save(&s, "APPLE_CERTIFICATE", b"opaque", "", &key)
+        .unwrap();
+    let report = expiry::overview(&d, &s, today);
+    assert_eq!(
+        report.items[0].flags,
+        vec![expiry::State::Unchecked, expiry::State::Unknown]
+    );
+    d.save(&s, "APPLE_CERTIFICATE", b"opaque", "2026-11-06", &key)
+        .unwrap();
+    assert_eq!(expiry::overview(&d, &s, today).items[0].days, Some(0));
+    assert!(expiry::overview(&d, &s, today).items[0]
+        .flags
+        .contains(&expiry::State::Soon));
+    d.save(&s, "APPLE_CERTIFICATE", b"opaque", "2026-12-07", &key)
+        .unwrap();
+    let entry = d
+        .entries
+        .get_mut(&Document::address(&s, "APPLE_CERTIFICATE"))
+        .unwrap();
+    entry.apple_check = Some(apple_api::Evidence {
+        kind: "certificates".into(),
+        id: "cert".into(),
+        name: "cert".into(),
+        checked: "2026-11-06T00:00:00Z".into(),
+        state: "PRESENT".into(),
+    });
+    assert_eq!(
+        expiry::overview(&d, &s, today).items[0].state,
+        expiry::State::Valid
     );
 }

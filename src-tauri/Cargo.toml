@@ -29,3 +29,6 @@ ureq = {version="2.12",features= ["json"] }
 crypto_box = {version="0.9.1",features= ["seal"] }
 [profile.dev]
 debug = 0
+
+[dev-dependencies]
+rustls = {version="0.23", default-features=false, features= ["ring", "std", "tls12"] }
