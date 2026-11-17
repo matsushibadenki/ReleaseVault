@@ -284,6 +284,8 @@ export function credentialName(
   def: { key: string; name: string; guide: string },
   t: ReturnType<typeof translate>,
 ) {
+  if (def.key === "GITHUB_SSH_KEY_PATH" && def.guide === "github")
+    return t("SSHキーのパス", "SSH key path", "SSH 密钥路径");
   if (def.guide === "apple-id" && def.key === "APPLE_APP_ID")
     return t(
       "App ID（アプリ識別子）",

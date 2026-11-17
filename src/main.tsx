@@ -1,3 +1,4 @@
+import { Preferences } from "./Preferences";
 import { createRoot } from "react-dom/client";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -30,6 +31,28 @@ function App() {
     setLang(l);
     localStorage.setItem("rv.language", l);
   };
+  const [density, setDensity] = useState(
+    () => localStorage.getItem("rv.density") || "standard",
+  );
+  const [textSize, setTextSize] = useState(
+    () => localStorage.getItem("rv.textSize") || "standard",
+  );
+  useEffect(() => {
+    document.documentElement.dataset.textSize = textSize;
+  }, [textSize]);
+  useEffect(() => {
+    document.documentElement.dataset.density = density;
+  }, [density]);
+  useEffect(() => {
+    const sync = (event: StorageEvent) => {
+      if (event.key === "rv.language" && ["ja", "zh", "en"].includes(event.newValue || ""))
+        setLang(event.newValue as Lang);
+      if (event.key === "rv.textSize") setTextSize(event.newValue || "standard");
+      if (event.key === "rv.density") setDensity(event.newValue || "standard");
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
   const refresh = useCallback(async () => {
     if (!isTauri()) return;
     const n = ++generation.current;
@@ -208,6 +231,20 @@ function App() {
             <h1>ReleaseVault</h1>
             <LoaderCircle className="spin" />
           </div>
+        ) : new URLSearchParams(location.search).has("preferences") ? (
+          <Preferences
+            {...{ snap, t, lang, density, textSize, show, busy }}
+            changeTextSize={(value) => {
+              setTextSize(value);
+              localStorage.setItem("rv.textSize", value);
+            }}
+            changeLang={changeLang}
+            selectProject={(scope) => run(() => invoke("select", { scope, key: "" }))}
+            changeDensity={(value) => {
+              setDensity(value);
+              localStorage.setItem("rv.density", value);
+            }}
+          />
         ) : snap.locked ? (
           <Gate
             key={String(snap.exists)}
@@ -238,6 +275,7 @@ function App() {
               revealed,
             }}
             select={(scope, key) => run(() => invoke("select", { scope, key }))}
+            openPreferences={() => run(() => invoke("open_preferences"))}
             toggle={() =>
               run(() => invoke("float_panel", { floating: !snap.floating }))
             }

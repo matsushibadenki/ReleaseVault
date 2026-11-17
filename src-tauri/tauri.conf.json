@@ -28,6 +28,16 @@
         "height": 660,
         "minWidth": 300,
         "minHeight": 420
+      },
+      {
+        "label": "preferences",
+        "create": false,
+        "url": "index.html?preferences",
+        "title": "ReleaseVault · Settings",
+        "width": 620,
+        "height": 480,
+        "minWidth": 430,
+        "minHeight": 380
       }
     ],
     "security": {

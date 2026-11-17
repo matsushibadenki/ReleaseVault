@@ -481,6 +481,29 @@
     ]
   },
   {
+    "key": "GITHUB_SSH_KEY_PATH",
+    "name": "SSH key path",
+    "kind": "config",
+    "group": "GitHub",
+    "guide": "github",
+    "targets": [
+      "mac-direct",
+      "mac-store",
+      "ios",
+      "ipados",
+      "android-play",
+      "android-apk",
+      "windows-direct",
+      "windows-msix",
+      "windows-exe",
+      "linux-appimage",
+      "linux-deb",
+      "linux-rpm",
+      "linux-flatpak",
+      "linux-snap"
+    ]
+  },
+  {
     "key": "PLAY_UPLOAD_KEYSTORE",
     "name": "Upload Release Keystore",
     "kind": "secret",

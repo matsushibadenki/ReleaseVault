@@ -155,7 +155,7 @@ export function Inspector(p: WorkProps & { row: Row; back?: () => void }) {
           <Btn
             icon={Upload}
             title={t("ファイルを読み込む", "Import file", "导入文件")}
-            disabled={linked}
+            disabled={linked || d.key === "GITHUB_SSH_KEY_PATH"}
             click={() => show("choose-import")}
           />
           {r.present && !linked && r.appIdPrefix !== "team" && (
@@ -253,7 +253,7 @@ export function Inspector(p: WorkProps & { row: Row; back?: () => void }) {
         )}
         {r.evidence && <small>{r.evidence}</small>}
       </section>
-      {d.key !== "APPLE_ACCOUNT_PASSWORD" && (
+      {!["APPLE_ACCOUNT_PASSWORD", "GITHUB_SSH_KEY_PATH"].includes(d.key) && (
         <section>
           <h3>GitHub Actions</h3>
           <button disabled={!r.present} onClick={() => show("github")}>

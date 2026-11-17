@@ -37,7 +37,7 @@ export type Row = {
   } | null;
   evidence: string | null;
 };
-export type Project = { id: number; name: string; targets: string[] };
+export type Project = { id: number; name: string; targets: string[]; development_directory?: string };
 export type Audit = { at: string; action: string; env: string; key: string };
 type Grants = Record<
   | "secrets"
@@ -174,4 +174,5 @@ export type WorkProps = {
   revealed: string;
   select: (s: Scope, k: string) => void;
   toggle: () => void;
+  openPreferences: () => void;
 };

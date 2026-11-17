@@ -321,6 +321,19 @@ export function Dialog({
           </label>
         )}
         {isProject && (
+          <label>
+            {t("ローカル開発ディレクトリ", "Local development directory", "本地开发目录")}
+            <input
+              name="value"
+              defaultValue={m === "edit-project" ? existing.development_directory ?? "" : ""}
+              placeholder="/Users/name/Projects/ReleaseVault"
+              maxLength={4096}
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </label>
+        )}
+        {isProject && (
           <fieldset>
             <legend>{t("配布先", "Distribution targets", "分发目标")}</legend>
             <div className="checks">

@@ -246,6 +246,21 @@ async fn perform(
     scope: Scope,
     mut input: Input,
 ) -> R<Value> {
+    if input.key == "GITHUB_SSH_KEY_PATH"
+        && matches!(
+            op.as_str(),
+            "github" | "remote" | "watch" | "app-inspect" | "import-file" | "import-text"
+        )
+    {
+        return Err("vault-only".into());
+    }
+    if input.key == "GITHUB_SSH_KEY_PATH"
+        && op == "save"
+        && (input.value.contains(['\n', '\r', '\0'])
+            || input.value.trim_start().starts_with("-----BEGIN"))
+    {
+        return Err("invalid".into());
+    }
     let pass = Zeroizing::new(std::mem::take(&mut input.password));
     let val = Zeroizing::new(std::mem::take(&mut input.value));
     let key_password = Zeroizing::new(std::mem::take(&mut input.key_password));
@@ -421,14 +436,21 @@ async fn perform(
             })?,
 
             "edit-project" => {
-                v.change(|d, _| d.edit_project(scope.project, &input.name, input.targets.clone()))?;
+                v.change(|d, _| {
+                    d.edit_project(scope.project, &input.name, input.targets.clone())?;
+                    d.set_development_directory(scope.project, &val)
+                })?;
                 if !input.targets.contains(&scope.target) {
                     w.scope.target = input.targets[0].clone();
                 }
                 w.selected = String::new();
             }
             "project" => {
-                let id = v.change(|d, _| d.add_project(&input.name, input.targets.clone()))?;
+                let id = v.change(|d, _| {
+                    let id = d.add_project(&input.name, input.targets.clone())?;
+                    d.set_development_directory(id, &val)?;
+                    Ok(id)
+                })?;
                 w.scope = Scope {
                     project: id,
                     target: input.targets[0].clone(),
@@ -970,6 +992,17 @@ async fn float_panel(app: tauri::AppHandle, state: State<'_, Shared>, floating: 
     notify(&app);
     Ok(())
 }
+#[tauri::command]
+async fn open_preferences(app: tauri::AppHandle) -> R<()> {
+    if let Some(window) = app.get_webview_window("preferences") {
+        window.unminimize().map_err(|_| "window")?;
+        window.set_focus().map_err(|_| "window")?;
+    } else {
+        open_workspace_window(&app, "preferences").map_err(|_| "window")?;
+    }
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -1035,6 +1068,7 @@ fn main() {
             select,
             perform,
             float_panel,
+            open_preferences,
             cancel_remote_check
         ])
         .run(tauri::generate_context!())

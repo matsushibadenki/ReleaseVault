@@ -1,5 +1,5 @@
 {
   "identifier": "workspace",
-  "windows": ["main", "inspector"],
+  "windows": ["main", "inspector", "preferences"],
   "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
 }

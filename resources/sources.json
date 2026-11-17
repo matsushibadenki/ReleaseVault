@@ -230,6 +230,15 @@
         "找到更新产物及其 .sig 文件，对照更新 JSON 核对下载 URL、目标平台和签名。"
       ]
     },
+    "ssh-path": {
+      "docs": "https://docs.github.com/en/authentication/connecting-to-github-with-ssh/checking-for-existing-ssh-keys",
+      "get": "https://github.com/settings/keys",
+      "instruction": [
+        "接続に使用するローカル鍵ファイルのパスを入力します。",
+        "Enter the path to the local key file used for the connection.",
+        "输入连接所用的本地密钥文件路径。"
+      ]
+    },
     "repo": {
       "docs": "https://docs.github.com/en/repositories/creating-and-managing-repositories/about-repositories",
       "get": "https://github.com/settings/repositories"
@@ -636,6 +645,15 @@
         "区分稳定版或测试版等更新渠道的名称，由分发服务映射到对应的更新源。"
       ],
       "example": "stable"
+    },
+    "GITHUB_SSH_KEY_PATH": {
+      "links": "ssh-path",
+      "purpose": [
+        "GitHubのSSH接続に使うローカル鍵ファイルの場所を記録します。ファイルのパスを入力してください。",
+        "Records the location of the local key file used for GitHub SSH connections. Enter the file path.",
+        "记录用于 GitHub SSH 连接的本地密钥文件位置。请输入文件路径。"
+      ],
+      "example": "~/.ssh/id_ed25519"
     },
     "RELEASE_REPOSITORY": {
       "links": "repo",

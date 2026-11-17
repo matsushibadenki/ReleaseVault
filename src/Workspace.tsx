@@ -25,15 +25,16 @@ import {
   ArrowUpDown,
   Menu,
   Check,
+  Minus,
   Monitor,
-  Archive,
+  Settings,
   FileBadge,
   Columns3,
 } from "lucide-react";
 import { credentialSet, sheetGroups } from "./credentialSets";
 import { credentialName, targets } from "./guide";
 import { status, type Row, type Scope, type T, type WorkProps } from "./types";
-import { Mark, Btn, Language, floating } from "./controls";
+import { Mark, Btn, floating } from "./controls";
 function badge(r: Row, t: T) {
   return {
     invalid: t("無効", "Invalid", "无效"),
@@ -49,7 +50,6 @@ export function Workspace(p: WorkProps) {
     row,
     t,
     lang,
-    changeLang,
     show,
     action,
     lock,
@@ -135,9 +135,20 @@ export function Workspace(p: WorkProps) {
       detail(false);
     }
   };
+  const sidebarWidthKey = "rv.sidebarWidth";
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = Number(localStorage.getItem(sidebarWidthKey));
+    return saved >= 150 && saved <= 400 ? saved : undefined;
+  });
+  const resizeSidebar = (width: number) => {
+    const next = Math.max(150, Math.min(400, Math.round(width)));
+    setSidebarWidth(next);
+    localStorage.setItem(sidebarWidthKey, String(next));
+  };
   if (floating) return row ? <Inspector {...p} row={row} /> : null;
   return (
     <div
+      style={sidebarWidth ? ({ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties) : undefined}
       className={
         "work" +
         (s.floating || view === "expiry" ? " detached" : "") +
@@ -180,22 +191,24 @@ export function Workspace(p: WorkProps) {
             {x.name}
           </button>
         ))}
-        <div className="subhead">
-          {t("配布先", "Distribution targets", "分发目标")}
-        </div>
-        {project.targets.map((x) => (
-          <button
-            key={x}
-            className={"nav target " + (s.scope.target === x ? "chosen" : "")}
-            onClick={() => choose({ ...s.scope, target: x })}
-          >
-            <Monitor />
-            <span>
-              {targets[x].split(" · ")[0]} ·{" "}
-              <span className="keep">{targets[x].split(" · ")[1]}</span>
-            </span>
-          </button>
-        ))}
+        <section className="distribution-targets" aria-labelledby="distribution-heading">
+          <div className="subhead" id="distribution-heading">
+            {t("配布先", "Distribution targets", "分发目标")}
+          </div>
+          {project.targets.map((x) => (
+            <button
+              key={x}
+              className={"nav target " + (s.scope.target === x ? "chosen" : "")}
+              onClick={() => choose({ ...s.scope, target: x })}
+            >
+              <Monitor />
+              <span>
+                {targets[x].split(" · ")[0]} ·{" "}
+                <span className="keep">{targets[x].split(" · ")[1]}</span>
+              </span>
+            </button>
+          ))}
+        </section>
         <div className="sidefoot">
           <button
             className="nav"
@@ -222,43 +235,44 @@ export function Workspace(p: WorkProps) {
               {t("Appleの有効期限", "Apple expiry dates", "Apple 到期日期")}
             </button>
           )}
-          {(s.passkeyAvailable || s.passkeyEnabled) && (
-            <button
-              className="nav"
-              onClick={() =>
-                show(s.passkeyEnabled ? "passkey-disable" : "passkey-enable")
-              }
-            >
-              <KeyRound />
-              {t("パスキー設定", "Passkey settings", "通行密钥设置")}
-            </button>
-          )}
-          {(s.deviceAvailable || s.deviceEnabled) && (
-            <button
-              className="nav"
-              onClick={() =>
-                show(s.deviceEnabled ? "device-disable" : "device-enable")
-              }
-            >
-              <LockKeyhole />
-              {t("Macの認証設定", "Mac authentication", "Mac 身份验证")}
-            </button>
-          )}
-          <button className="nav" onClick={() => show("edit-project")}>
-            <SlidersHorizontal />
-            {t("プロジェクト設定", "Project settings", "项目设置")}
-          </button>
-          <button className="nav" onClick={() => show("backup")}>
-            <Archive />
-            {t("バックアップ", "Backup", "备份")}
+          <button className="nav" onClick={p.openPreferences}>
+            <Settings />
+            {t("環境設定", "Settings", "偏好设置")}
           </button>
           <button className="nav" onClick={lock}>
             <LockKeyhole />
             {t("今すぐロック", "Lock vault", "锁定保险库")}
           </button>
-          <Language lang={lang} change={changeLang} />
         </div>
       </aside>
+      <div
+        className="sidebar-resize"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t("サイドメニューの幅", "Sidebar width", "侧边栏宽度")}
+        aria-valuemin={150}
+        aria-valuemax={400}
+        aria-valuenow={sidebarWidth ?? 192}
+        tabIndex={0}
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.currentTarget.focus();
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+          const left = event.currentTarget.parentElement?.getBoundingClientRect().left ?? 0;
+          resizeSidebar(event.clientX - left);
+        }}
+        onKeyDown={(event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const width = event.currentTarget.previousElementSibling?.getBoundingClientRect().width ?? 192;
+          if (event.key === "Home") resizeSidebar(150);
+          else if (event.key === "End") resizeSidebar(400);
+          else resizeSidebar(width + (event.key === "ArrowRight" ? 10 : -10));
+        }}
+      />
       {nav && (
         <button
           className="scrim"
@@ -423,27 +437,22 @@ export function Workspace(p: WorkProps) {
                     <th>{t("状態", "Status", "状态")}</th>
                   </tr>
                 </thead>
-                {groups.map((g) => (
+                {groups.map((g, index) => (
                   <tbody
                     key={g.id}
-                    className={g.name ? "credential-set" : undefined}
+                    data-provider={g.provider}
+                    className={
+                      index > 0 && groups[index - 1].provider !== g.provider
+                        ? "credential-set provider-start"
+                        : "credential-set"
+                    }
                   >
                     <tr className="group">
-                      <th colSpan={3} scope="rowgroup">
+                      <th colSpan={keys ? 3 : 2} scope="rowgroup">
                         <div>
-                          {g.name && (
-                            <Layers3
-                              size={13}
-                              aria-label={t("セット", "Set", "组合")}
-                            />
-                          )}
-                          <span>{g.provider}</span>
-                          {g.name && (
-                            <>
-                              <span aria-hidden="true">/</span>
-                              <strong>{g.name}</strong>
-                            </>
-                          )}
+                          <Layers3 size={13} aria-hidden="true" />
+                          <strong>{g.name || g.provider}</strong>
+                          {g.name && <span className="group-provider">{g.provider}</span>}
                           <small>{g.members.length}</small>
                         </div>
                       </th>
@@ -489,7 +498,13 @@ export function Workspace(p: WorkProps) {
                           </td>
                           <td>
                             <span className={"badge " + status(r)}>
-                              {r.present ? <Check size={11} /> : <i />}
+                              {status(r) === "configured" || !r.present ? (
+                                <span className="status-icon" aria-hidden="true">
+                                  {r.present ? <Check size={10} /> : <Minus size={10} />}
+                                </span>
+                              ) : (
+                                <Check size={11} aria-hidden="true" />
+                              )}
                               {badge(r, t)}
                             </span>
                           </td>

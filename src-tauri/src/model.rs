@@ -21,6 +21,8 @@ pub struct Project {
     pub name: String,
     pub targets: Vec<String>,
     pub custom: Vec<Def>,
+    #[serde(default)]
+    pub development_directory: String,
 }
 #[derive(Default, Clone, Serialize, Deserialize)]
 pub struct Binding {
@@ -99,6 +101,7 @@ impl Document {
                 name: "ReleaseVault".into(),
                 targets: vec!["mac-direct".into(), "mac-store".into()],
                 custom: vec![],
+                development_directory: String::new(),
             }],
             github_apps: BTreeMap::new(),
             action_reports: BTreeMap::new(),
@@ -261,8 +264,17 @@ impl Document {
             name: name.trim().into(),
             targets,
             custom: vec![],
+            development_directory: String::new(),
         });
         Ok(id)
+    }
+    pub fn set_development_directory(&mut self, id: u64, directory: &str) -> R<()> {
+        if directory.len() > 4096 || directory.contains('\0') {
+            return Err("invalid".into());
+        }
+        let project = self.projects.iter_mut().find(|p| p.id == id).ok_or("scope")?;
+        project.development_directory = directory.into();
+        Ok(())
     }
     pub fn custom(&mut self, s: &Scope, key: &str, name: &str, kind: &str) -> R<()> {
         if !key_ok(key)
