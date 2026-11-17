@@ -940,24 +940,32 @@ async fn configure_device(
     notify(app);
     Ok(())
 }
+// Both windows are top-level: no parent or owner is assigned to the inspector.
+fn open_workspace_window(
+    app: &tauri::AppHandle,
+    label: &str,
+) -> tauri::Result<tauri::WebviewWindow> {
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|config| config.label == label)
+        .expect("workspace window must be configured");
+    tauri::WebviewWindowBuilder::from_config(app, config)?.build()
+}
+
 #[tauri::command]
 async fn float_panel(app: tauri::AppHandle, state: State<'_, Shared>, floating: bool) -> R<()> {
     state.lock().map_err(|_| "busy")?.vault.unlocked()?;
-    if floating && !panel(&app) {
-        tauri::WebviewWindowBuilder::new(
-            &app,
-            "inspector",
-            tauri::WebviewUrl::App("index.html?panel=inspector".into()),
-        )
-        .title("ReleaseVault · Inspector")
-        .inner_size(370., 660.)
-        .min_inner_size(300., 420.)
-        .build()
-        .map_err(|_| "window")?;
-    } else if !floating {
-        if let Some(w) = app.get_webview_window("inspector") {
-            w.close().map_err(|_| "window")?;
+    if floating {
+        if let Some(window) = app.get_webview_window("inspector") {
+            window.set_focus().map_err(|_| "window")?;
+        } else {
+            open_workspace_window(&app, "inspector").map_err(|_| "window")?;
         }
+    } else if let Some(window) = app.get_webview_window("inspector") {
+        window.close().map_err(|_| "window")?;
     }
     notify(&app);
     Ok(())
@@ -985,6 +993,7 @@ fn main() {
                 selected: String::new(),
                 auth_epoch: 0,
             }));
+            open_workspace_window(app.handle(), "main")?;
             let poll = app.handle().clone();
             std::thread::spawn(move || loop {
                 std::thread::sleep(std::time::Duration::from_secs(60));

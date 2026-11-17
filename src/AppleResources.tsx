@@ -42,6 +42,14 @@ export function AppleResources({
   );
   const target = targets.find((row) => row.def.key === targetKey) || targets[0];
   const shared = Boolean(target?.dependents.length);
+  const checkedRows = snap.rows.filter((row) => row.present && row.appleCheck);
+  const currentReport = report?.credentialsCurrent ? report : undefined;
+  const stateLabel = (state: string) =>
+    state === "ACTIVE"
+      ? t("有効", "Active", "有效")
+      : state === "INVALID"
+        ? t("無効", "Invalid", "无效")
+        : state || "—";
   return (
     <div className="apple-resources">
       <button
@@ -56,6 +64,46 @@ export function AppleResources({
           "从 Apple 获取到期日期",
         )}
       </button>
+      {checkedRows.length > 0 && (
+        <>
+          <button
+            type="button"
+            disabled={busy || !ready}
+            onClick={() => action("apple-fetch", {})}
+          >
+            <RefreshCw size={14} />
+            {t("照合済み項目を一括再確認", "Recheck matched items", "批量复查已匹配项目")}
+          </button>
+          {currentReport && (
+            <ul aria-label={t("再確認結果", "Recheck results", "复查结果")}>
+              {checkedRows.map((row) => {
+                const prior = row.appleCheck!;
+                const latest = currentReport.resources.find(
+                  (item) => item.kind === prior.kind && item.id === prior.id,
+                );
+                const expiry = row.expires || "—";
+                return (
+                  <li key={row.def.key}>
+                    <strong>{credentialName(row.def, t)}</strong>{" · "}
+                    {!latest
+                      ? t("取得結果にありません", "Absent from the fetched list", "本次列表中未找到")
+                      : expiry === latest.expires && prior.state === latest.state
+                        ? t("変更なし", "No change", "无变化")
+                        : [
+                            expiry !== latest.expires
+                              ? `${t("期限", "Expiry", "到期日期")} ${expiry} → ${latest.expires}`
+                              : "",
+                            prior.state !== latest.state
+                              ? `${t("状態", "Status", "状态")} ${stateLabel(prior.state)} → ${stateLabel(latest.state)}`
+                              : "",
+                          ].filter(Boolean).join(" · ")}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      )}
       {!ready && (
         <small>
           {t(

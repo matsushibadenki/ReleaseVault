@@ -12,11 +12,22 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "ReleaseVault",
         "width": 1260,
         "height": 800,
         "minWidth": 540,
         "minHeight": 460
+      },
+      {
+        "label": "inspector",
+        "create": false,
+        "url": "index.html?panel=inspector",
+        "title": "ReleaseVault · Inspector",
+        "width": 370,
+        "height": 660,
+        "minWidth": 300,
+        "minHeight": 420
       }
     ],
     "security": {

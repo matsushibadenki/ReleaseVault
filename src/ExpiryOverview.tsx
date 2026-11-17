@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUpRight, Search, Info, Link2 } from "lucide-react";
+import { ArrowUpRight, Search, Info, Link2, Copy } from "lucide-react";
 import { credentialName, targets } from "./guide";
 import type { Sheet, T, ExpiryItem, ExpiryState } from "./types";
 
@@ -16,6 +16,7 @@ export function ExpiryOverview({
   const [project, setProject] = useState("");
   const [env, setEnv] = useState("");
   const [query, setQuery] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
   const labels: Record<ExpiryState, string> = {
     invalid: t("無効", "Invalid", "无效"),
     expired: t("期限切れ", "Expired", "已过期"),
@@ -51,6 +52,38 @@ export function ExpiryOverview({
         ? item.state !== "valid"
         : item.flags.includes(filter as ExpiryState)),
   );
+  async function copyRenewalList() {
+    const header = [
+      t("項目", "Credential", "凭据"),
+      t("共有元", "Source project", "来源项目"),
+      t("環境", "Environment", "环境"),
+      t("期限", "Expiry", "到期日期"),
+      t("状態", "Status", "状态"),
+      t("影響先", "Affected projects", "受影响的项目"),
+    ];
+    const records = rows.map((item) => [
+      credentialName(item.def, t),
+      item.source,
+      item.scope.env,
+      item.expires,
+      item.flags.map((flag) => labels[flag]).join(", "),
+      item.projects.map((project) => project.name).join(", "),
+    ]);
+    const text = [header, ...records]
+      .map((record) =>
+        record.map((value) => {
+          const cell = value.replace(/[\t\r\n]/g, " ").trim();
+          return /^[=+@-]/.test(cell) ? "'" + cell : cell;
+        }).join("\t"),
+      )
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus(t("コピーしました", "Copied", "已复制"));
+    } catch {
+      setCopyStatus(t("コピーできませんでした", "Copy failed", "复制失败"));
+    }
+  }
   return (
     <section className="expiry-overview">
       <div className="expiry-filters">
@@ -158,6 +191,13 @@ export function ExpiryOverview({
           <Info size={13} />
         </span>
       </small>
+      <div className="expiry-filters">
+        <button type="button" disabled={!rows.length} onClick={copyRenewalList}>
+          <Copy size={14} />
+          {t("表示中の一覧をコピー", "Copy visible list", "复制当前列表")}
+        </button>
+        <small role="status">{copyStatus}</small>
+      </div>
       <div className="expiry-list">
         {!rows.length && (
           <div className="empty">
