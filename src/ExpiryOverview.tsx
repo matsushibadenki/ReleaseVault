@@ -15,6 +15,8 @@ export function ExpiryOverview({
   const [filter, setFilter] = useState("attention");
   const [project, setProject] = useState("");
   const [env, setEnv] = useState("");
+  const [horizon, setHorizon] = useState("");
+  const [sort, setSort] = useState("priority");
   const [query, setQuery] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
   const labels: Record<ExpiryState, string> = {
@@ -35,6 +37,8 @@ export function ExpiryOverview({
         String(item.source_id) === project ||
         item.projects.some((p) => String(p.id) === project)) &&
       (!env || item.scope.env === env) &&
+      (!horizon ||
+        (item.days !== null && item.days >= 0 && item.days <= Number(horizon))) &&
       [
         item.def.key,
         credentialName(item.def, t),
@@ -52,6 +56,13 @@ export function ExpiryOverview({
         ? item.state !== "valid"
         : item.flags.includes(filter as ExpiryState)),
   );
+  if (sort === "expiry") {
+    rows.sort((a, b) => {
+      if (a.days === null) return b.days === null ? 0 : 1;
+      if (b.days === null) return -1;
+      return a.days - b.days;
+    });
+  }
   async function copyRenewalList() {
     const header = [
       t("項目", "Credential", "凭据"),
@@ -137,6 +148,33 @@ export function ExpiryOverview({
           {["Development", "Staging", "Production"].map((value) => (
             <option key={value}>{value}</option>
           ))}
+        </select>
+        <select
+          aria-label={t("更新計画の期間", "Renewal planning period", "续期计划时段")}
+          value={horizon}
+          onChange={(e) => {
+            setHorizon(e.target.value);
+            setFilter(e.target.value ? "all" : "attention");
+            setCopyStatus("");
+          }}
+        >
+          <option value="">{t("すべての期限", "Any expiry date", "所有到期日期")}</option>
+          {[7, 30, 90].map((days) => (
+            <option key={days} value={days}>
+              {t(`${days}日以内に期限`, `Expires within ${days} days`, `${days}天内到期`)}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label={t("並べ替え", "Sort expiry list", "排序")}
+          value={sort}
+          onChange={(e) => {
+            setSort(e.target.value);
+            setCopyStatus("");
+          }}
+        >
+          <option value="priority">{t("確認優先順", "Review priority", "按检查优先级")}</option>
+          <option value="expiry">{t("期限の早い順", "Earliest expiry first", "按到期日期升序")}</option>
         </select>
       </div>
       <div
