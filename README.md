@@ -2,6 +2,12 @@
 
 Tauri 2 / Rust / React / TypeScript のローカル署名情報管理アプリ。Android、iOS、iPadOS、Windows、macOS、Linuxの**配布先**を選ぶと、対応する項目のシートを表示します。macOSのGitHub配布とMac App Store、AndroidのPlayアップロード鍵と直接配布鍵、Windows StoreのMSIXとEXE/MSIを区別します。収録項目は候補で、すべてが必須という意味ではありません。
 
+## スクリーンショット
+
+![ReleaseVaultの資格情報シート。左にプロジェクトと配布先、中央に項目と状態、右に選択した項目の詳細。](docs/images/releasevault-sheet.png)
+
+画面はデモデータで撮影しています。
+
 ## 起動
 
 今回のmacOS Apple Silicon用ビルドは `target/release/bundle/macos/ReleaseVault.app`。初回に12文字以上のマスターパスワードを設定します。本番配布用のDeveloper ID署名・公証は行っていません。
